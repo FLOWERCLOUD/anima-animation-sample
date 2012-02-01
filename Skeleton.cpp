@@ -21,26 +21,24 @@ void Skeleton::addTransform( int parent, const aiMatrix4x4& transform, const aiM
 	assert( mTransforms.size() == mParents.size() );
 	assert( parent < static_cast<int>( mTransforms.size() ) && parent >= -1 );
 
+	aiMatrix4x4 inverseBindingTransform( bindingTransform );
+	inverseBindingTransform.Inverse();
+
 	mTransforms.push_back( transform );
-	mBindingTransforms.push_back( bindingTransform );
+	mBindingTransforms.push_back( inverseBindingTransform );
 	mParents.push_back( parent );
 	mNodeNames.push_back( name );
 }
 
-const aiMatrix4x4& Skeleton::getLocalTransform( int bone ) const
-{
-	return mTransforms[bone];
-}
-
 aiMatrix4x4 Skeleton::getWorldTransform( int bone ) const
 {
+	aiMatrix4x4 result = mBindingTransforms[bone] * mTransforms[bone];
 	int p = mParents[bone];
-	aiMatrix4x4 result = mTransforms[bone];
 
-	while( p > 0 )
+	while( p >= 0 )
 	{
-		p = mParents[p];
 		result = mTransforms[p] * result;
+		p = mParents[p];
 	}
 
 	return result;
@@ -50,11 +48,6 @@ aiMatrix4x4 Skeleton::getWorldTransform( int bone ) const
 void Skeleton::setLocalTransform( int bone, const aiMatrix4x4& transform )
 {
 	mTransforms[bone] = transform;
-}
-
-char Skeleton::getParent( const int bone ) const
-{
-	return mParents[bone];
 }
 
 int Skeleton::getBoneIndex( const string& name ) const

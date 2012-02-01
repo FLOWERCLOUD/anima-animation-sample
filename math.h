@@ -105,6 +105,14 @@ namespace Math
 			return result;
 		}
 
+		Matrix() {}
+
+		Matrix( const aiMatrix4x4& other )
+		{
+			D3DXMATRIX tmp( &other.a1 );
+			D3DXMatrixTranspose( &data, &tmp );	
+		}
+
 		Matrix operator*( const Matrix& right )
 		{
 			Matrix result;

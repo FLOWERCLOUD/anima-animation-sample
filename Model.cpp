@@ -17,7 +17,7 @@ Model::~Model(void)
 {
 }
 
-int Model::CreateDataConverters( aiMesh* mesh, std::vector<DataConverter*>& result )
+int Model::CreateDataConverters( aiMesh* mesh, Skeleton* skeleton, std::vector<DataConverter*>& result )
 {
 	const int vertexCount = mesh->mNumVertices;
 	int offset = 0;
@@ -63,7 +63,7 @@ int Model::CreateDataConverters( aiMesh* mesh, std::vector<DataConverter*>& resu
 
 	if( mesh->HasBones() )
 	{
-		result.push_back( new aiSkinningConverter( offset, mesh->mBones, mesh->mNumBones ) );
+		result.push_back( new aiSkinningConverter( offset, mesh->mBones, mesh->mNumBones, skeleton ) );
 		offset += result.back()->Size();
 	}
 
@@ -106,7 +106,7 @@ bool Model::load( RenderContext* context )
 
 		// create data converters first
 		std::vector<DataConverter*> dataConverters;
-		result.m_VertexSize = CreateDataConverters( importedMesh, dataConverters );
+		result.m_VertexSize = CreateDataConverters( importedMesh, mSkeleton, dataConverters );
 
 		// now build vertex declaration
 		std::vector<D3DVERTEXELEMENT9> vertexElements;
@@ -185,7 +185,7 @@ bool Model::load( RenderContext* context )
 		// load shaders
 		{
 			LPD3DXBUFFER buf;
-			HRESULT hr = D3DXCreateEffectFromFile( context->Device(), "Shaders/Model.fx", NULL, NULL, NULL, NULL, &result.m_pEffect, &buf );
+			HRESULT hr = D3DXCreateEffectFromFile( context->Device(), "../Shaders/Model.fx", NULL, NULL, NULL, NULL, &result.m_pEffect, &buf );
 
 			if( FAILED(hr) && buf)
 			{
@@ -208,6 +208,10 @@ bool Model::load( RenderContext* context )
 
 void Model::Render( RenderContext* context )
 {
+	static float d = 0.f;
+	d+= 0.0001;
+
+
 	context->Device()->SetRenderState( D3DRS_ALPHABLENDENABLE, FALSE );
 	context->Device()->SetRenderState( D3DRS_ZWRITEENABLE, D3DZB_TRUE);
 	context->Device()->SetRenderState( D3DRS_ZENABLE, D3DZB_TRUE);
@@ -216,7 +220,8 @@ void Model::Render( RenderContext* context )
 	{
 		const Mesh& mesh = m_Meshes[m];
 		D3DXHANDLE hTechnique = mesh.m_pEffect->GetTechniqueByName( "Model" );
-		D3DXHANDLE hWorldViewProjection = mesh.m_pEffect->GetParameterBySemantic( NULL, "WORLDVIEWPROJECTION" );
+		D3DXHANDLE hViewProjection = mesh.m_pEffect->GetParameterBySemantic( NULL, "VIEWPROJECTION" );
+
 		D3DXHANDLE hLightDirection = mesh.m_pEffect->GetParameterBySemantic( NULL, "LIGHTDIRECTION" );
 		D3DXHANDLE hBoneTransforms = mesh.m_pEffect->GetParameterBySemantic( NULL, "BONETRANSFORMS" );
 		
@@ -224,8 +229,8 @@ void Model::Render( RenderContext* context )
 		DX_CHECK( context->Device()->SetStreamSource( 0, mesh.m_pVertexBuffer, 0, mesh.m_VertexSize ) );
 		DX_CHECK( context->Device()->SetIndices( mesh.m_pIndexBuffer ) );
 
-		Math::Matrix worldViewProjection = context->GetViewMatrix() * context->GetProjectionMatrix();
-		DX_CHECK( mesh.m_pEffect->SetMatrix( hWorldViewProjection, &worldViewProjection.data ) );
+		Math::Matrix viewProjection = Math::Matrix::RotationYawPitchRoll( Math::Vector( d, 0, 0 ) )* context->GetViewMatrix() * context->GetProjectionMatrix();
+		DX_CHECK( mesh.m_pEffect->SetMatrix( hViewProjection, &viewProjection.data ) );
 
 
 		D3DXVECTOR4 lightDirection = D3DXVECTOR4( 0, 1, 0, 1 );
@@ -239,9 +244,21 @@ void Model::Render( RenderContext* context )
 
 		const int boneMatrixCount = 16;
 		D3DXMATRIX boneMatrices[boneMatrixCount];
-		for( int i=0; i<boneMatrixCount; ++i )
 		{
-			memcpy( boneMatrices[i], worldViewProjection.data, sizeof(D3DXMATRIX) );
+			int i=0; 
+			while(i<mSkeleton->getBoneCount() )
+			{
+				Math::Matrix boneTransform( mSkeleton->getWorldTransform( i ) );
+				memcpy( boneMatrices[i], boneTransform .data, sizeof(D3DXMATRIX) );
+
+				++i;
+			}
+
+			while( i < boneMatrixCount )
+			{
+				D3DXMatrixIdentity( &boneMatrices[i] );
+				++i;
+			}
 		}
 
 		DX_CHECK( mesh.m_pEffect->SetMatrixArray( hBoneTransforms, boneMatrices, boneMatrixCount ) );
@@ -261,4 +278,9 @@ void Model::Render( RenderContext* context )
 
 	DX_CHECK( context->Device()->SetStreamSource( 0, NULL, 0, 0 ) );
 	DX_CHECK( context->Device()->SetIndices( NULL ) );
+}
+
+void Model::Update( float dt )
+{
+
 }

@@ -27,7 +27,7 @@ class Model : public DisplayList::Node
 
 	std::vector<Mesh> m_Meshes;
 
-	int CreateDataConverters( aiMesh* mesh, std::vector<DataConverter*>& result );
+	int CreateDataConverters( aiMesh* mesh, Skeleton* skeleton, std::vector<DataConverter*>& result );
 
 public:
 	Model( const std::string& fileName );
@@ -36,6 +36,8 @@ public:
 	bool load( RenderContext* context );
 
 	void Render( RenderContext* context );
+
+	void Update( float dt );
  
 	bool mIsLoaded;
 	std::string mFileName;

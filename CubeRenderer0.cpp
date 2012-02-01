@@ -203,7 +203,7 @@ void CubeRenderer0::AcquireResources( RenderContext* context )
 		GetCurrentDirectory(sizeof(szDirectory) - 1, szDirectory);
 
 		LPD3DXBUFFER buf;
-		HRESULT hr = D3DXCreateEffectFromFile( context->Device(), "Shaders/Cube0.fx", NULL, NULL, NULL, NULL, &m_pEffect, &buf );
+		HRESULT hr = D3DXCreateEffectFromFile( context->Device(), "../Shaders/Cube0.fx", NULL, NULL, NULL, NULL, &m_pEffect, &buf );
 
 		if( FAILED(hr) && buf)
 		{

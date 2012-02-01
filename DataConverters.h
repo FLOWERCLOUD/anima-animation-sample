@@ -156,7 +156,7 @@ struct aiSkinningConverter : public DataConverter
 	typedef std::map<int, std::vector<VertexInfluence> > VertexInfluenceMap;
 	VertexInfluenceMap m_VertexInfluenceMap;
 
-	aiSkinningConverter( int& offsetInBytes, aiBone** bones, unsigned int boneCount )
+	aiSkinningConverter( int& offsetInBytes, aiBone** bones, unsigned int boneCount, Skeleton* skeleton )
 	: DataConverter( D3DDECLUSAGE_BLENDINDICES, 0, offsetInBytes ) 
 	{
 		// build map first
@@ -164,10 +164,13 @@ struct aiSkinningConverter : public DataConverter
 		{
 			for( unsigned int w=0; w<bones[b]->mNumWeights; ++w )
 			{
+				
 				const aiVertexWeight& aiVW = bones[b]->mWeights[w];
-				VertexInfluence bi = { b, aiVW.mWeight };
+				int boneIndex = skeleton->getBoneIndex( bones[b]->mName.data );
+				assert( boneIndex >= 0 );
 
-				m_VertexInfluenceMap[aiVW.mVertexId].push_back( bi );
+				VertexInfluence vi = { boneIndex, aiVW.mWeight };
+				m_VertexInfluenceMap[aiVW.mVertexId].push_back( vi );
 			}
 		}
 

@@ -1,7 +1,7 @@
 
 
-float4x4 WorldViewProjection : WORLDVIEWPROJECTION;
-float4 LightDirection : LIGHTDIRECTION;
+float4x4 ViewProjection	: VIEWPROJECTION;
+float4 LightDirection	: LIGHTDIRECTION;
 
 float4x4 BoneTransforms[16] : BONETRANSFORMS;
 
@@ -27,7 +27,6 @@ VertexShaderOutput Model_VS( VertexShaderInput input )
 {
 
 	VertexShaderOutput result;
-	result.Position =  mul( float4(input.Position.xyz,1), WorldViewProjection );
 	result.Normal = input.Normal.xyz;
 	result.TexCoord = input.TexCoord;
 	result.Color = input.BlendWeights;
@@ -35,11 +34,14 @@ VertexShaderOutput Model_VS( VertexShaderInput input )
 	
 	float4 posH = float4( input.Position.xyz, 1.f );
 	
-	result.Position =
+	float4 blendedPosition =
 		mul( posH, BoneTransforms[input.BlendIndices.x] ) * input.BlendWeights.x + 
 		mul( posH, BoneTransforms[input.BlendIndices.y] ) * input.BlendWeights.y + 
 		mul( posH, BoneTransforms[input.BlendIndices.z] ) * input.BlendWeights.z + 
 		mul( posH, BoneTransforms[input.BlendIndices.w] ) * input.BlendWeights.w;
+
+	result.Position =  mul( blendedPosition, ViewProjection );
+	result.Normal = input.Normal.xyz;
 
 	return result;
 }
