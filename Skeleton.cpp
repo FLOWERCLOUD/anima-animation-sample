@@ -37,7 +37,7 @@ aiMatrix4x4 Skeleton::getWorldTransform( int bone ) const
 
 	while( p >= 0 )
 	{
-		result = mTransforms[p] * result;
+		result = result * mTransforms[p];
 		p = mParents[p];
 	}
 

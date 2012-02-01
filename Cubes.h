@@ -41,13 +41,13 @@ class AnimaApplication
 		LARGE_INTEGER TicksPerSecond;
 		LARGE_INTEGER LastTick;
 
-		float DeltaMS;
+		float Delta;
 	public:
 		DeltaTime()
 		{
 			QueryPerformanceFrequency( &TicksPerSecond );
 			QueryPerformanceCounter( &LastTick );
-			DeltaMS = 0.f;
+			Delta = 0.f;
 		}
 
 		void Update()
@@ -55,12 +55,13 @@ class AnimaApplication
 			LARGE_INTEGER curTick;
 			QueryPerformanceCounter( &curTick );
 
-			DeltaMS = float(double(curTick.QuadPart - LastTick.QuadPart)/TicksPerSecond.QuadPart);
+			Delta = float(double(curTick.QuadPart - LastTick.QuadPart)/TicksPerSecond.QuadPart);
+			LastTick = curTick;
 		}
 
 		float Elapsed()
 		{
-			return DeltaMS / 1000.0f;
+			return Delta;
 		}
 	} m_DeltaTime;
 

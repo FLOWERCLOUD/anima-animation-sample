@@ -3,8 +3,8 @@
 #include <iostream>
 
 #define KEY_DOWN 0x8000 
-#define MOVEMENT_SPEED 0.1f
-#define ROTATION_SPEED 0.150f
+#define MOVEMENT_SPEED 1.f
+#define ROTATION_SPEED 1.f
 
 Camera::Camera( const Input& input )
 	: m_Azimuth( Math::Pi/2.f )

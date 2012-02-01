@@ -203,6 +203,8 @@ void AnimaApplication::NextFrame()
 
 	m_pCamera->update( m_DeltaTime.Elapsed() );
 	m_pCubeRenderer->Update( m_DeltaTime.Elapsed() );
+	m_Model->Update( m_DeltaTime.Elapsed() );
+
 	m_pRenderContext->SetViewMatrix( m_pCamera->ViewMatrix() );
 	m_pRenderContext->RenderFrame( m_Model );
 

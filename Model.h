@@ -4,11 +4,13 @@
 #include "DisplayList.h"
 #include "Skeleton.h"
 #include "DataConverters.h"
+#include "Animation.h"
 
 struct aiScene;
 
 class Model : public DisplayList::Node
 {
+	Assimp::Importer mModelImporter;
 	Skeleton* mSkeleton;
 
 	struct Mesh
@@ -26,6 +28,7 @@ class Model : public DisplayList::Node
 	};
 
 	std::vector<Mesh> m_Meshes;
+	std::vector<Animation*> m_Animations;
 
 	int CreateDataConverters( aiMesh* mesh, Skeleton* skeleton, std::vector<DataConverter*>& result );
 

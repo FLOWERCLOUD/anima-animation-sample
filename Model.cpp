@@ -73,12 +73,12 @@ int Model::CreateDataConverters( aiMesh* mesh, Skeleton* skeleton, std::vector<D
 bool Model::load( RenderContext* context )
 {
 	// Create an instance of the Importer class
-	Assimp::Importer importer;
+	
 
 	// And have it read the given file with some example postprocessing
 	// Usually - if speed is not the most important aspect for you - you'll 
 	// propably to request more postprocessing than we do in this example.
-	const aiScene* scene = importer.ReadFile( mFileName, 
+	const aiScene* scene = mModelImporter.ReadFile( mFileName, 
 		aiProcess_CalcTangentSpace       | 
 		aiProcess_Triangulate            |
 		aiProcess_JoinIdenticalVertices  |
@@ -88,14 +88,24 @@ bool Model::load( RenderContext* context )
 	// If the import failed, report it
 	if( !scene)
 	{
-		std::cout << importer.GetErrorString() << std::endl;
-		MessageBox( NULL,  importer.GetErrorString(), "import failed", MB_OK );
+		std::cout << mModelImporter.GetErrorString() << std::endl;
+		MessageBox( NULL,  mModelImporter.GetErrorString(), "import failed", MB_OK );
 
 		return false;
 	}
 
-	mSkeleton = SkeletonFactory::extractSkeleton( scene );
+	// load skeleton first
+	{
+		mSkeleton = SkeletonFactory::extractSkeleton( scene );
+	}
 
+	// now load animations
+	for( unsigned int a=0; a<scene->mNumAnimations; ++a )
+	{
+		m_Animations.push_back( new Animation( scene->mAnimations[a] ) );
+	}
+	
+	// finally: load meshes
 	for( unsigned int m=0; m<scene->mNumMeshes; ++m )
 	{
 		Mesh result;
@@ -209,12 +219,15 @@ bool Model::load( RenderContext* context )
 void Model::Render( RenderContext* context )
 {
 	static float d = 0.f;
-	d+= 0.0001;
+	d+= 0.0001f;
 
 
 	context->Device()->SetRenderState( D3DRS_ALPHABLENDENABLE, FALSE );
 	context->Device()->SetRenderState( D3DRS_ZWRITEENABLE, D3DZB_TRUE);
 	context->Device()->SetRenderState( D3DRS_ZENABLE, D3DZB_TRUE);
+
+	// evaluate pose
+	m_Animations.front()->EvaluatePose( *mSkeleton );
 
 	for( unsigned int m=0; m<m_Meshes.size(); ++m )
 	{
@@ -282,5 +295,5 @@ void Model::Render( RenderContext* context )
 
 void Model::Update( float dt )
 {
-
+	m_Animations.front()->Update( dt );
 }
