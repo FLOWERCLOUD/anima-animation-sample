@@ -37,11 +37,12 @@ public:
 	~Model(void);
 
 	bool load( RenderContext* context );
+	void SetRoot( const Math::Matrix& root );
 
 	void Render( RenderContext* context );
-
 	void Update( float dt );
- 
+
+
 	bool mIsLoaded;
 	std::string mFileName;
 

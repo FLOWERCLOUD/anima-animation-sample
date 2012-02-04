@@ -1,9 +1,7 @@
 
-
+float4x4 BoneTransforms[32] : BONE_TRANSFORMS;
 float4x4 ViewProjection	: VIEWPROJECTION;
 float4 LightDirection	: LIGHTDIRECTION;
-
-float4x4 BoneTransforms[16] : BONETRANSFORMS;
 
 struct VertexShaderInput
 {
@@ -19,29 +17,43 @@ struct VertexShaderOutput
     float4 Position			: POSITION0;
 	float3 Normal			: TEXCOORD1;
     float2 TexCoord			: TEXCOORD0;
-	float4 Color : TEXCOORD2;
+	float4 Color			: TEXCOORD2;
 };
 
 
 VertexShaderOutput Model_VS( VertexShaderInput input )
 {
-
 	VertexShaderOutput result;
 	result.Normal = input.Normal.xyz;
 	result.TexCoord = input.TexCoord;
-	result.Color = input.BlendWeights;
 
+	float4 colors[4] = 
+	{
+		 float4( 1, 0, 0, 1 ),
+		 float4( 0, 1, 0, 1 ),
+		 float4( 0, 0, 1, 1 ),
+		 float4( 1, 1, 1, 1 )
+	};
+
+	result.Color = colors[input.BlendIndices[3]];
 	
 	float4 posH = float4( input.Position.xyz, 1.f );
+	float4 normalH = float4( input.Normal.xyz, 0.f );
 	
 	float4 blendedPosition =
 		mul( posH, BoneTransforms[input.BlendIndices.x] ) * input.BlendWeights.x + 
 		mul( posH, BoneTransforms[input.BlendIndices.y] ) * input.BlendWeights.y + 
 		mul( posH, BoneTransforms[input.BlendIndices.z] ) * input.BlendWeights.z + 
 		mul( posH, BoneTransforms[input.BlendIndices.w] ) * input.BlendWeights.w;
+		 
+	float4 blendedNormal =
+		mul( normalH, BoneTransforms[input.BlendIndices.x] ) * input.BlendWeights.x + 
+		mul( normalH, BoneTransforms[input.BlendIndices.y] ) * input.BlendWeights.y + 
+		mul( normalH, BoneTransforms[input.BlendIndices.z] ) * input.BlendWeights.z + 
+		mul( normalH, BoneTransforms[input.BlendIndices.w] ) * input.BlendWeights.w;
 
+	result.Normal = normalize( blendedNormal.xyz );
 	result.Position =  mul( blendedPosition, ViewProjection );
-	result.Normal = input.Normal.xyz;
 
 	return result;
 }
@@ -49,20 +61,18 @@ VertexShaderOutput Model_VS( VertexShaderInput input )
 
 float4 Model_PS( VertexShaderOutput input ) : COLOR0
 {
-	
-	const float ambient = 0.3f;
+	const float ambient = 0.5f;
 	float diffuse = saturate(dot(input.Normal, LightDirection.xyz ) );
 
 	return float4( input.Color.xyz * (ambient + diffuse), 1 );
-//	return float4(float3(1,0,0) * (ambient + diffuse),1);
 }
 
 technique Model
 {
     pass P0
     {
-        VertexShader = compile vs_2_0 Model_VS();
-        PixelShader  = compile ps_2_0 Model_PS();
+        VertexShader = compile vs_3_0 Model_VS();
+        PixelShader  = compile ps_3_0 Model_PS();
     }
 }
 

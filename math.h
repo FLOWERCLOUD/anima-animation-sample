@@ -3,8 +3,9 @@
 
 #include "stdafx.h"
 #include <D3dx9math.h>
+#include "Debug.h"
 
-/* Simple math functionality. Wraps d3dx math functions, the idea was that the same code can be used across the d3d and opengl build
+/* Simple math functionality. Wraps d3dx math functions, the idea was that the same code can be used across the d3d and  opengl build
 	Note that the math usage of this application is very basic and not performance critical => as a result no attention has been spent on efficiency	*/
 namespace Math
 {
@@ -63,6 +64,11 @@ namespace Math
 			return result;
 			
 		}
+
+		float Dot( const Vector& other ) const
+		{
+			return D3DXVec3Dot( &data, &other.data );
+		}
 	};
 
 	struct Matrix
@@ -109,7 +115,7 @@ namespace Math
 
 		Matrix( const aiMatrix4x4& other )
 		{
-			D3DXMATRIX tmp( &other.a1 );
+			D3DXMATRIX tmp( &other[0][0] );
 			D3DXMatrixTranspose( &data, &tmp );	
 		}
 
@@ -132,6 +138,29 @@ namespace Math
 			Vector result;
 			D3DXVec3TransformNormal( &result.data, &n.data, &data );
 			return result;		
+		}
+	};
+
+	struct mayaMatrix
+	{
+		float values[16];
+		mayaMatrix( const Matrix& other )
+		{
+			memcpy( values, other.data.m, sizeof(values) );	
+		}
+
+		mayaMatrix( const aiMatrix4x4& other )
+		{
+			aiMatrix4x4 tmp = other;
+			tmp.Transpose();
+			memcpy( values, &tmp[0][0], sizeof(values) );
+		}
+
+		void print() 
+		{
+			for( int i=0; i<16; ++i )
+				DebugPrint( "%.6f ", values[i] );
+			DebugPrint( "\n" );
 		}
 	};
 	

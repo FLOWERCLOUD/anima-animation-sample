@@ -2,7 +2,6 @@
 #include <iostream>
 #include "RenderContext.h"
 #include "DxErr.h"
-#include "Debug.h"
 
 using namespace std;
 Model::Model( const std::string& fileName )
@@ -15,6 +14,34 @@ Model::Model( const std::string& fileName )
 
 Model::~Model(void)
 {
+	for( unsigned int m=0; m<m_Meshes.size(); ++m )
+	{
+		Mesh& mesh = m_Meshes[m];
+
+		if( mesh.m_pEffect )
+			mesh.m_pEffect->Release();
+
+		if( mesh.m_pIndexBuffer )
+			mesh.m_pIndexBuffer->Release();
+
+		if( mesh.m_pVertexBuffer )
+			mesh.m_pVertexBuffer->Release();
+
+		if( mesh.m_pVertexDeclaration )
+			mesh.m_pVertexDeclaration->Release();
+	}
+
+	m_Meshes.clear();
+	delete mSkeleton;
+}
+
+void Model::SetRoot( const Math::Matrix& root )
+{
+	aiMatrix4x4 m;
+	memcpy( &m[0][0], root.data, sizeof(Math::Matrix) );
+	m.Transpose();
+
+	mSkeleton->setLocalTransform( 0, m );
 }
 
 int Model::CreateDataConverters( aiMesh* mesh, Skeleton* skeleton, std::vector<DataConverter*>& result )
@@ -82,7 +109,8 @@ bool Model::load( RenderContext* context )
 		aiProcess_CalcTangentSpace       | 
 		aiProcess_Triangulate            |
 		aiProcess_JoinIdenticalVertices  |
-		aiProcess_MakeLeftHanded |
+		aiProcess_MakeLeftHanded		 |
+		aiProcess_FlipWindingOrder		 |
 		aiProcess_SortByPType);
 
 	// If the import failed, report it
@@ -125,7 +153,7 @@ bool Model::load( RenderContext* context )
 				dataConverters[i]->CopyType( vertexElements );
 
 			D3DVERTEXELEMENT9 endElement = D3DDECL_END();
-			vertexElements.push_back( endElement );
+			vertexElements.push_back( endElement ); 
 
 			context->Device()->CreateVertexDeclaration( &vertexElements[0], &result.m_pVertexDeclaration );
 		}
@@ -149,6 +177,11 @@ bool Model::load( RenderContext* context )
 			result.m_pVertexBuffer->Unlock();
 			result.m_VertexCount = importedMesh->mNumVertices;
 		}
+
+		// delete data converters again
+		for( unsigned int i=0; i<dataConverters.size(); ++i )
+			delete dataConverters[i];
+		dataConverters.clear();
 
 		// build index buffer
 		{
@@ -189,7 +222,6 @@ bool Model::load( RenderContext* context )
 
 			DX_CHECK( result.m_pIndexBuffer->Unlock() );
 			result.m_TriangleCount = importedMesh->mNumFaces;
-
 		}
 
 		// load shaders
@@ -218,10 +250,6 @@ bool Model::load( RenderContext* context )
 
 void Model::Render( RenderContext* context )
 {
-	static float d = 0.f;
-	d+= 0.0001f;
-
-
 	context->Device()->SetRenderState( D3DRS_ALPHABLENDENABLE, FALSE );
 	context->Device()->SetRenderState( D3DRS_ZWRITEENABLE, D3DZB_TRUE);
 	context->Device()->SetRenderState( D3DRS_ZENABLE, D3DZB_TRUE);
@@ -236,53 +264,42 @@ void Model::Render( RenderContext* context )
 		D3DXHANDLE hViewProjection = mesh.m_pEffect->GetParameterBySemantic( NULL, "VIEWPROJECTION" );
 
 		D3DXHANDLE hLightDirection = mesh.m_pEffect->GetParameterBySemantic( NULL, "LIGHTDIRECTION" );
-		D3DXHANDLE hBoneTransforms = mesh.m_pEffect->GetParameterBySemantic( NULL, "BONETRANSFORMS" );
+		D3DXHANDLE hBoneTransforms = mesh.m_pEffect->GetParameterBySemantic( NULL, "BONE_TRANSFORMS" );
 		
 		DX_CHECK( context->Device()->SetVertexDeclaration( mesh.m_pVertexDeclaration ) );
 		DX_CHECK( context->Device()->SetStreamSource( 0, mesh.m_pVertexBuffer, 0, mesh.m_VertexSize ) );
 		DX_CHECK( context->Device()->SetIndices( mesh.m_pIndexBuffer ) );
 
-		Math::Matrix viewProjection = Math::Matrix::RotationYawPitchRoll( Math::Vector( d, 0, 0 ) )* context->GetViewMatrix() * context->GetProjectionMatrix();
+		Math::Matrix viewProjection = context->GetViewMatrix() * context->GetProjectionMatrix();
 		DX_CHECK( mesh.m_pEffect->SetMatrix( hViewProjection, &viewProjection.data ) );
 
 
-		D3DXVECTOR4 lightDirection = D3DXVECTOR4( 0, 1, 0, 1 );
+		D3DXVECTOR4 lightDirection = Math::Vector( 1, 1, 0 ).Normal();
 		DX_CHECK( mesh.m_pEffect->SetVector( hLightDirection, &lightDirection ) );
 
 		DX_CHECK( mesh.m_pEffect->SetTechnique( hTechnique ) );
 
-		UINT cPasses;
-		DX_CHECK( mesh.m_pEffect->Begin( &cPasses, 0 ) );
 
-
-		const int boneMatrixCount = 16;
+		const int boneMatrixCount = 32;
 		D3DXMATRIX boneMatrices[boneMatrixCount];
+
+		memset( boneMatrices, 0x0, sizeof( boneMatrices ) );
+		for( int i=0; i<mSkeleton->getBoneCount(); ++i )
 		{
-			int i=0; 
-			while(i<mSkeleton->getBoneCount() )
-			{
-				Math::Matrix boneTransform( mSkeleton->getWorldTransform( i ) );
-				memcpy( boneMatrices[i], boneTransform .data, sizeof(D3DXMATRIX) );
-
-				++i;
-			}
-
-			while( i < boneMatrixCount )
-			{
-				D3DXMatrixIdentity( &boneMatrices[i] );
-				++i;
-			}
+			Math::Matrix boneTransform( mSkeleton->getWorldTransform( i ) );
+			memcpy( &boneMatrices[i], &boneTransform, sizeof(D3DXMATRIX) );
 		}
+	
 
 		DX_CHECK( mesh.m_pEffect->SetMatrixArray( hBoneTransforms, boneMatrices, boneMatrixCount ) );
 
-
+	
+		UINT cPasses;
+		DX_CHECK( mesh.m_pEffect->Begin( &cPasses, 0 ) );
 		for( unsigned int iPass = 0; iPass < cPasses; iPass++ )
 		{
 			DX_CHECK( mesh.m_pEffect->BeginPass( iPass ) );
-
 			DX_CHECK( context->Device()->DrawIndexedPrimitive( D3DPT_TRIANGLELIST, 0, 0, mesh.m_VertexCount, 0, mesh.m_TriangleCount ) );
-
 			DX_CHECK( mesh.m_pEffect->EndPass() );
 		}
 

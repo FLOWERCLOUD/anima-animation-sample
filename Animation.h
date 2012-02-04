@@ -6,19 +6,11 @@ class Skeleton;
 class Animation
 {
 	const aiAnimation* mAnimation;
+
 	float mTime;
+	float mDuration;
 
 	bool mPlayForward;
-
-	void Interpolate( aiQuaternion& result, const aiQuaternion& a, const aiQuaternion& b, float c )
-	{
-		a.Interpolate( result, a, b, c );
-	}
-
-	void Interpolate( aiVector3D& result, const aiVector3D& a, const aiVector3D& b, float c )
-	{
-		result = (1.f-c)*a + c * b;
-	}
 
 	template<typename T, typename R>
 	void evaluateChannel( T* data, int dataSize, float t, R& result )
@@ -26,7 +18,7 @@ class Animation
 		int i=0;
 		for( i=0; i<dataSize ; ++i )
 		{
-			if( t < data[i].mTime ) break;
+			if( t <= data[i].mTime ) break;
 		}
 
 		int l = max( 0, i-1 );
@@ -36,7 +28,9 @@ class Animation
 		float c = static_cast<float>( (t-data[l].mTime)  / tDiff );
 
 		c = max( 0, min( 1, c ) );
-		Interpolate( result, data[l].mValue, data[r].mValue, c );
+
+		Assimp::Interpolator<R> interpolator;
+		interpolator( result, data[l].mValue, data[r].mValue, c );
 	}
 
 public:

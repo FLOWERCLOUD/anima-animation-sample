@@ -1,6 +1,5 @@
 #include "StdAfx.h"
 #include "FramerateCounter.h"
-#include "Debug.h"
 
 FramerateCounter::FramerateCounter(void)
 	: m_SampleCount(0)

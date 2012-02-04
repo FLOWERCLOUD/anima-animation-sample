@@ -3,6 +3,9 @@
 #include <set>
 #include <map>
 #include "aiScene.h"
+#include "Debug.h"
+#include "math.h"
+
 
 
 using namespace std;
@@ -21,26 +24,23 @@ void Skeleton::addTransform( int parent, const aiMatrix4x4& transform, const aiM
 	assert( mTransforms.size() == mParents.size() );
 	assert( parent < static_cast<int>( mTransforms.size() ) && parent >= -1 );
 
-	aiMatrix4x4 inverseBindingTransform( bindingTransform );
-	inverseBindingTransform.Inverse();
-
 	mTransforms.push_back( transform );
-	mBindingTransforms.push_back( inverseBindingTransform );
+	mBindingTransforms.push_back( bindingTransform );
 	mParents.push_back( parent );
 	mNodeNames.push_back( name );
 }
 
 aiMatrix4x4 Skeleton::getWorldTransform( int bone ) const
 {
-	aiMatrix4x4 result = mBindingTransforms[bone] * mTransforms[bone];
+	aiMatrix4x4 result = mTransforms[bone] * mBindingTransforms[bone];
 	int p = mParents[bone];
 
 	while( p >= 0 )
 	{
-		result = result * mTransforms[p];
+		result = mTransforms[p] * result;
 		p = mParents[p];
 	}
-
+	
 	return result;
 
 }
@@ -54,6 +54,16 @@ int Skeleton::getBoneIndex( const string& name ) const
 {
 	vector<string>::const_iterator it = std::find( mNodeNames.begin(), mNodeNames.end(), name );
 	return it != mNodeNames.end() ? it - mNodeNames.begin() : -1;
+}
+
+const std::vector<std::string>& Skeleton::getBoneNames() const
+{
+	return mNodeNames;
+}
+
+const std::vector<aiMatrix4x4>& Skeleton::getLocalTransforms() const 
+{
+	return mTransforms;
 }
 
 int Skeleton::getBoneCount() const
@@ -163,7 +173,6 @@ Skeleton* SkeletonFactory::extractSkeleton( const aiScene* scene )
 	// last step: filter out unused nodes and fill in skeleton
 	Skeleton* result = new Skeleton();
 	filterHierarchy( hierarchy, *result );
-
 
 	return result;
 }

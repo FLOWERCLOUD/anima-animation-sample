@@ -28,6 +28,7 @@
 #include <map>
 #include <algorithm>
 #include <numeric>
+#include <iostream>
 
 // assimp
 #include <assimp.hpp> 

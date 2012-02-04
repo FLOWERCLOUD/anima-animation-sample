@@ -26,7 +26,7 @@ void __DxCheckAndReportError( HRESULT hr, const char* file, int line )
 		const char* errorDescription = DXGetErrorDescription( hr );
 
 		char buffer[4096];
-		sprintf( buffer, "Error '%s': %s occured in %s, line %d", errorString, errorDescription, file, line );
+		sprintf_s( buffer, "Error '%s': %s occured in %s, line %d", errorString, errorDescription, file, line );
 		MessageBox( NULL, "DirectX Error", buffer, MB_OK );
 
 		DebugPrint( "%s\n", buffer );

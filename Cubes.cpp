@@ -13,7 +13,6 @@
 #include <Shellapi.h>
 #include "TestEnvironment.h"
 #include "Model.h"
-#include "CubeRenderer0.h"
 #include "Input.h"
 
 
@@ -72,7 +71,7 @@ AnimaApplication::~AnimaApplication()
 
 		m_pUserInterface->ReleaseResources( m_pRenderContext );
 		delete m_pUserInterface;
-
+		delete m_pModel;
 	//	m_pCubeRenderer->ReleaseResources( m_pRenderContext );
 	//	delete m_pCubeRenderer;
 
@@ -147,22 +146,19 @@ HRESULT AnimaApplication::CreateInstance( HINSTANCE hInstance, HINSTANCE hPrevIn
 	Instance()->m_pRenderContext = new RenderContext( hWnd, DISPLAY_WIDTH, DISPLAY_HEIGHT );
 	Instance()->m_pFramerateCounter = new FramerateCounter;
 
-	Instance()->m_pCubeRenderer = new CubeRenderer0( m_pInstance->m_pRenderContext );
-	Instance()->m_pCubeRenderer->AcquireResources( Instance()->m_pRenderContext );
-	Instance()->m_pCubeRenderer->AddCubes( 10000 );
-
-	Instance()->m_pUserInterface = new UserInterface( m_pInstance->m_pRenderContext, m_pInstance->m_pCubeRenderer, m_pInstance->m_pFramerateCounter );
+	Instance()->m_pUserInterface = new UserInterface( m_pInstance->m_pRenderContext, m_pInstance->m_pFramerateCounter );
 	Instance()->m_pUserInterface->AcquireResources( Instance()->m_pRenderContext );
 
-	Instance()->m_pCubeRenderer->SetNext( m_pInstance->m_pUserInterface );
 	Instance()->m_pInput = new Input();
 	Instance()->m_pCamera = new Camera( *Instance()->m_pInput );
 	// set up renderer 
 
-	
-	Instance()->m_Model = new Model( "C:\\Users\\Theo\\Desktop\\cubes.dae" );
-	Instance()->m_Model->load( Instance()->m_pRenderContext );
-	Instance()->m_Model->SetNext( Instance()->m_pCubeRenderer );
+	Instance()->m_pModel = new Model( "..\\Models\\cubes.dae" );
+	Instance()->m_pModel->load( Instance()->m_pRenderContext );
+	Instance()->m_pModel->SetNext( Instance()->m_pUserInterface );
+
+	Instance()->m_ModelRotation = 0.f;
+
 	return S_OK;
 }
 
@@ -202,14 +198,16 @@ void AnimaApplication::NextFrame()
 	m_pFramerateCounter->FrameStart();
 
 	m_pCamera->update( m_DeltaTime.Elapsed() );
-	m_pCubeRenderer->Update( m_DeltaTime.Elapsed() );
-	m_Model->Update( m_DeltaTime.Elapsed() );
+	m_pModel->Update( m_DeltaTime.Elapsed() );
 
 	m_pRenderContext->SetViewMatrix( m_pCamera->ViewMatrix() );
-	m_pRenderContext->RenderFrame( m_Model );
+	m_pRenderContext->RenderFrame( m_pModel );
 
 	m_pFramerateCounter->FrameEnd();
 	
+	m_ModelRotation += 0.0001f;
+	Math::Matrix modelRoot = Math::Matrix::RotationYawPitchRoll( Math::Vector( m_ModelRotation, 0.f, 0.f ) );
+	m_pModel->SetRoot( modelRoot );
 //	Sleep(10);
 }
 
@@ -227,26 +225,6 @@ LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 					PostQuitMessage(0);
 					break;
 
-					/*
-				case VK_LEFT:
-					if( !m_pTestEnvironment->IsValid() )
-						m_pCubeRenderer->RemoveCubes( 1000 );
-					break;
-				case VK_RIGHT:
-					if( !m_pTestEnvironment->IsValid() )
-						m_pCubeRenderer->AddCubes( 1000 );
-					break;
-
-				case VK_UP:
-					if( !m_pTestEnvironment->IsValid() )
-						m_pCubeRenderer->SetScale( m_pCubeRenderer->GetScale() + 0.5f );
-					break;
-
-				case VK_DOWN:
-					if( !m_pTestEnvironment->IsValid() )
-						m_pCubeRenderer->SetScale( m_pCubeRenderer->GetScale() - 0.5f );
-					break;
-					*/
 				case 0x52: // 'R'
 					TestDeviceLost();
 					break;
@@ -300,7 +278,6 @@ void AnimaApplication::OnDeviceReset()
 
 void AnimaApplication::TestDeviceLost()
 {
-#ifndef OPENGL
 	D3DPRESENT_PARAMETERS d3dpp;
 	ZeroMemory( &d3dpp, sizeof(d3dpp) );
 					
@@ -315,5 +292,4 @@ void AnimaApplication::TestDeviceLost()
 	d3dpp.AutoDepthStencilFormat = D3DFMT_D16;
 	d3dpp.PresentationInterval   = D3DPRESENT_INTERVAL_IMMEDIATE;
 	m_pRenderContext->Device()->Reset( &d3dpp );
-#endif
 }

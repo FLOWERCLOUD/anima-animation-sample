@@ -2,23 +2,6 @@
 #include "RenderContext.h"
 #include "DisplayList.h"
 #include "Cubes.h"
-#include "Debug.h"
-
-#ifdef OPENGL
-CGcontext g_cgContext;
-
-void cgErrorCallback(void)
-{
-    CGerror lastError = cgGetError();
-    if(lastError) {
-        const char *listing = cgGetLastListing(g_cgContext);
-        DebugPrint("%s\n", cgGetErrorString(lastError));
-        DebugPrint("%s\n", listing);
-        exit(-1);
-    }
-}
-#endif
-
 
 RenderContext::RenderContext( HWND hWnd, int width, int height )
 {
@@ -67,7 +50,6 @@ RenderContext::RenderContext( HWND hWnd, int width, int height )
 
 RenderContext::~RenderContext(void)
 { 
-#ifndef OPENGL
 	if( m_pDevice != NULL )
 	{
        m_pDevice->Release();
@@ -78,17 +60,11 @@ RenderContext::~RenderContext(void)
 	{
         m_pD3D->Release();
 	   m_pD3D = 0;
-	}
-#else
-
-#endif
-
-	
+	}	
 }
 
 void RenderContext::RenderFrame( DisplayList::Node* displayList )
 {
-#ifndef OPENGL
 	// check for lost device first
 	{
 		HRESULT coop = m_pDevice->TestCooperativeLevel();
@@ -117,7 +93,7 @@ void RenderContext::RenderFrame( DisplayList::Node* displayList )
 	// clear frame buffer and render all objects in display list
 	{
 		m_pDevice->Clear( 0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
-							 D3DCOLOR_COLORVALUE(0.0f,0.0f,0.0f,1.0f), 1.0f, 0 );
+							 D3DCOLOR_RGBA(100, 149, 237,255), 1.0f, 0 );
 
 		m_pDevice->BeginScene();
 	
@@ -131,16 +107,4 @@ void RenderContext::RenderFrame( DisplayList::Node* displayList )
 		m_pDevice->EndScene();
 		m_pDevice->Present( NULL, NULL, NULL, NULL );
 	}
-#else
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	DisplayList::Node* cur = displayList;
-	while( cur )
-	{
-		cur->Render( this );
-		cur = cur->Next();
-	}
-
-	glutSwapBuffers();
-#endif
-}
+ }

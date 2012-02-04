@@ -21,12 +21,12 @@ public:
 	void addTransform( int parent, const aiMatrix4x4& transform, const aiMatrix4x4& bindingTransform, const std::string& name );
 
 	const std::vector<aiMatrix4x4>& getLocalTransforms() const;
+	const std::vector<std::string>& getBoneNames() const;
+	const std::vector<int>& getParents() const;
 
 	aiMatrix4x4 getWorldTransform( int bone ) const;
 	void setLocalTransform( int bone, const aiMatrix4x4& transform );
 	
-	const std::vector<int>& getParents() const;
-
 	int getBoneIndex( const std::string& name ) const;
 	int getBoneCount() const;
 
@@ -46,16 +46,6 @@ class SkeletonFactory
 	};
 
 public:
-/*	
-	struct SkeletonBuilder
-	{
-		std::map<std::string, const aiBone*> animatedNodes;
-		std::map<std::string, int> boneIndices;
-
-		Skeleton
-	};
-*/
-
 	static void findAnimatedNodes( const aiScene* scene, std::map<std::string, aiBone*>& result );
 	static void flattenHierarchy( const aiNode* node, int parent, const std::map<std::string, aiBone*>& animatedNodes, std::vector<SkeletonNode>& result );
 	static void markParents( std::vector<SkeletonNode>& hierarchy );
@@ -63,9 +53,6 @@ public:
 	static void filterHierarchy( std::vector<SkeletonNode>& hierarchy, Skeleton& result );
 
 public:
-
-	
-
 	static Skeleton* extractSkeleton( const aiScene* scene );
 };
 

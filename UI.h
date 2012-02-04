@@ -10,13 +10,8 @@ class FramerateCounter;
 /* Simple class for managing the 'user interface'. Basically just renders some statistics to the screen	*/
 class UserInterface : public DisplayList::Node
 {
-	CubeRendererInterface* m_pCubeRenderer;
 	FramerateCounter* m_pFrameCounter;
-
-#ifndef OPENGL
 	LPD3DXFONT m_Font;
-#else
-#endif
 
 	// Top left corner of text rendering (pixel coordinates)
 	static const int Top = 10;
@@ -33,7 +28,7 @@ class UserInterface : public DisplayList::Node
 	void RenderText( TCHAR* text, RECT& rect );
 
 public:
-	UserInterface( RenderContext* context, CubeRendererInterface* cubeRenderer, FramerateCounter* frameCounter );
+	UserInterface( RenderContext* context, FramerateCounter* frameCounter );
 	virtual ~UserInterface(void);
 
 	void Render( RenderContext* context );

@@ -17,7 +17,7 @@ class Model;
 class AnimaApplication
 {
 	static const int DISPLAY_WIDTH = 1024;
-	static const int DISPLAY_HEIGHT = 768;
+	static const int DISPLAY_HEIGHT = 768; 
 
 	RenderContext*  m_pRenderContext;
 	FramerateCounter* m_pFramerateCounter;
@@ -25,7 +25,7 @@ class AnimaApplication
 	TestEnvironment* m_pTestEnvironment;
 	Camera* m_pCamera;
 	Input* m_pInput;
-	Model* m_Model;
+	Model* m_pModel;
 
 	WNDCLASSEX m_WindowClass;
 	HWND m_WindowHandle;
@@ -34,7 +34,7 @@ class AnimaApplication
 	AnimaApplication( WNDCLASSEX windowClass, HWND windowHandle ) : m_WindowClass( windowClass ), m_WindowHandle( windowHandle ){}
 	static AnimaApplication* m_pInstance;
 
-	CubeRendererInterface* m_pCubeRenderer;
+	float m_ModelRotation;
 
 	class DeltaTime 
 	{

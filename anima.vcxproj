@@ -13,7 +13,6 @@
   <ItemGroup>
     <ClCompile Include="Animation.cpp" />
     <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="CubeRenderer0.cpp" />
     <ClCompile Include="Cubes.cpp" />
     <ClCompile Include="Debug.cpp" />
     <ClCompile Include="FramerateCounter.cpp" />
@@ -29,7 +28,6 @@
   <ItemGroup>
     <ClInclude Include="Animation.h" />
     <ClInclude Include="Camera.h" />
-    <ClInclude Include="CubeRenderer0.h" />
     <ClInclude Include="CubeRendererInterface.h" />
     <ClInclude Include="Cubes.h" />
     <ClInclude Include="DataConverters.h" />

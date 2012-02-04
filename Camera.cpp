@@ -4,15 +4,15 @@
 
 #define KEY_DOWN 0x8000 
 #define MOVEMENT_SPEED 1.f
-#define ROTATION_SPEED 1.f
+#define ROTATION_SPEED 1.5f
 
 Camera::Camera( const Input& input )
 	: m_Azimuth( Math::Pi/2.f )
-	, m_Zenith( Math::Pi/2.f )
+	, m_Zenith( Math::Pi/2.f + 25.f / 180.f * Math::Pi )
 	, m_Input( input )
 {
 	m_Projection = Math::Matrix::Perspective( 45.0f, 1024.f / 768.f, 1.0f, 1000.0f );
-	m_Position = Math::Vector( 0, 0, 0 );
+	m_Position = Math::Vector( 0, 1.5, -2 );
 	GetCursorPos( &m_LastCursorPos );
 }
 
@@ -55,32 +55,19 @@ void Camera::update( float dt )
 		cZ,
 		sA * sZ
 	);
-	/*
-	Math::Vector up( 
-		0.f,
-		sZ,
-		cZ
-	);
-	*/
 
 	Math::Vector up(
-		cA * cZ,
+		-cA * cZ,
 		sZ,
-		sA * cZ
+		-sA * cZ
 	);
-
-
 
 	Math::Vector left = forward.Cross( up );
 
 	Math::Vector s = left.Scale( _left ? 1.0f : ( _right ? -1.0f : 0.0f ) ).Scale( dt * MOVEMENT_SPEED );
-	Math::Vector f = forward.Scale( _up ? 1.0f : ( _down ? -1.0f : 0.0f ) ).Scale( dt * MOVEMENT_SPEED );
-	
-	m_Position += s + f;
+	Math::Vector f = forward.Scale( _up ? 1.0f : ( _down ? -1.0f : 0.0f ) ).Scale( dt * MOVEMENT_SPEED );	
+	m_Position += s+f;
 	
 	m_View =  Math::Matrix::LookAt( m_Position, m_Position + forward, up );
-	std::cout << m_Position.GetX() << ", " << m_Position.GetY() << ", " << m_Position.GetZ() << std::endl;
-	//m_LastCursorPos = curCursorPos;
-
 }
 

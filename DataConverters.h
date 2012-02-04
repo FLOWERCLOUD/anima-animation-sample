@@ -3,7 +3,6 @@
 #include "stdafx.h"
 #include "math.h"
 
-
 class DataConverter
 {
 protected:
@@ -126,7 +125,6 @@ struct aiSkinningConverter : public DataConverter
 	{
 		int BoneIndex;
 		float Weight;
-
 	};
 
 	struct BoneWeightCompare
@@ -162,13 +160,12 @@ struct aiSkinningConverter : public DataConverter
 		// build map first
 		for( unsigned int b=0; b<boneCount; ++b )
 		{
+			int boneIndex = skeleton->getBoneIndex( bones[b]->mName.data );
+			assert( boneIndex >= 0 );
+
 			for( unsigned int w=0; w<bones[b]->mNumWeights; ++w )
 			{
-				
 				const aiVertexWeight& aiVW = bones[b]->mWeights[w];
-				int boneIndex = skeleton->getBoneIndex( bones[b]->mName.data );
-				assert( boneIndex >= 0 );
-
 				VertexInfluence vi = { boneIndex, aiVW.mWeight };
 				m_VertexInfluenceMap[aiVW.mVertexId].push_back( vi );
 			}
@@ -182,10 +179,11 @@ struct aiSkinningConverter : public DataConverter
 
 			// only keep most significant weights
 			std::sort( influences.begin(), influences.end(), BoneWeightCompare() );
-			influences.resize( MAX_INFLUENCES_PER_VERTEX );
-			std::sort( influences.begin(), influences.end(), BoneIndexCompare() );
+			VertexInfluence dummy = { 0, 0 };
+			influences.resize( MAX_INFLUENCES_PER_VERTEX, dummy );
+			//std::sort( influences.begin(), influences.end(), BoneIndexCompare() );
 
-			// renormalize weights
+			// renormalize weight
 			float totalWeight = std::accumulate( influences.begin(), influences.end(), 0.f,BoneWeightAccumulate() );
 			for( int i=0; i<MAX_INFLUENCES_PER_VERTEX; ++i )
 				influences[i].Weight /= totalWeight;
@@ -219,8 +217,8 @@ struct aiSkinningConverter : public DataConverter
 			boneIndices[i] = influences[i].BoneIndex;
 			boneWeights[i] = influences[i].Weight;
 		}
-			
-		memcpy( destination + m_Offset, boneIndices, IndicesSize() );
+
+ 		memcpy( destination + m_Offset, boneIndices, IndicesSize() );
 		memcpy( destination + m_Offset + IndicesSize(), boneWeights, WeightsSize() );
 	}
 };
