@@ -6,8 +6,8 @@
 
 
 UserInterface::UserInterface( RenderContext* context, FramerateCounter* frameCounter )
-	: m_pFrameCounter( frameCounter )
-	, m_RenderStatistics( true )
+	: mFrameCounter( frameCounter )
+	, mRenderStatistics( true )
 {
 	TextColor = D3DCOLOR_RGBA(255, 255, 255,255 );
 }
@@ -18,17 +18,17 @@ UserInterface::~UserInterface()
 
 void UserInterface::RenderText( TCHAR* text, RECT& rect )
 {
-	m_Font->DrawText( NULL, text, -1, &rect, 0, TextColor );
+	mFont->DrawText( NULL, text, -1, &rect, 0, TextColor );
 }
 
 void UserInterface::Render( RenderContext* context )
 {
-	if( m_RenderStatistics )
+	if( mRenderStatistics )
 	{
 		RECT rcLine =  { Left,Top, Left + LineWidth, Top + LineHeight };
 	
 		TCHAR textBuffer[512];  
-		float avgFPS = m_pFrameCounter->GetAverage();
+		float avgFPS = mFrameCounter->GetAverage();
 
 		// Framerate
 		sprintf_s( textBuffer, "Frame time: %.2f ms", avgFPS * 1000.0f );
@@ -42,8 +42,11 @@ void UserInterface::Render( RenderContext* context )
 
 void UserInterface::ReleaseResources(  RenderContext* )
 {
-	m_Font->Release();
-	m_Font = 0;
+	if( mFont )
+	{
+		mFont->Release();
+		mFont = 0;
+	}
 }
 
 void UserInterface::AcquireResources( RenderContext* context )
@@ -51,7 +54,7 @@ void UserInterface::AcquireResources( RenderContext* context )
 	D3DXCreateFont( 
 		context->Device(), 30, 0, FW_BOLD, 0, FALSE, DEFAULT_CHARSET,
 		OUT_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, 
-		TEXT("Arial"), &m_Font 
+		TEXT("Arial"), &mFont 
 	);
 }
 

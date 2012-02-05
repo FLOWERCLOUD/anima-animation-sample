@@ -1,25 +1,25 @@
 #pragma once
 class TestEnvironment
 {
-	int m_NumCubes;
-	float m_CubeRotation;
-	float m_CubeScale;
+	int mNumCubes;
+	float mCubeRotation;
+	float mCubeScale;
 
-	bool m_IsValid;
+	bool mIsValid;
 
-	int m_RendererVersion;
-	int m_RandomSeed;
+	int mRendererVersion;
+	int mRandomSeed;
 
 public:
 	TestEnvironment( int argc, const LPWSTR* argv );
 	~TestEnvironment(void);
 
-	int GetNumCubes() const { return m_NumCubes; }
-	float GetCubeRotation() const { return m_CubeRotation; }
-	float GetCubeScale() const { return m_CubeScale; }
-	int GetRendererVersion() const { return m_RendererVersion; }
-	int GetRandomSeed() const { return m_RandomSeed; }
+	int GetNumCubes() const { return mNumCubes; }
+	float GetCubeRotation() const { return mCubeRotation; }
+	float GetCubeScale() const { return mCubeScale; }
+	int GetRendererVersion() const { return mRendererVersion; }
+	int GetRandomSeed() const { return mRandomSeed; }
 
-	bool IsValid() const { return m_IsValid; }
+	bool IsValid() const { return mIsValid; }
 };
 

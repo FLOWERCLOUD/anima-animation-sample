@@ -19,22 +19,22 @@ class AnimaApplication
 	static const int DISPLAY_WIDTH = 1024;
 	static const int DISPLAY_HEIGHT = 768; 
 
-	RenderContext*  m_pRenderContext;
-	FramerateCounter* m_pFramerateCounter;
-	UserInterface* m_pUserInterface;
-	TestEnvironment* m_pTestEnvironment;
-	Camera* m_pCamera;
-	Input* m_pInput;
-	Model* m_pModel;
+	RenderContext*  mRenderContext;
+	FramerateCounter* mFramerateCounter;
+	UserInterface* mUserInterface;
+	TestEnvironment* mTestEnvironment;
+	Camera* mCamera;
+	Input* mInput;
+	Model* mModel;
 
-	WNDCLASSEX m_WindowClass;
-	HWND m_WindowHandle;
+	WNDCLASSEX mWindowClass;
+	HWND mWindowHandle;
 
 	AnimaApplication(){}
-	AnimaApplication( WNDCLASSEX windowClass, HWND windowHandle ) : m_WindowClass( windowClass ), m_WindowHandle( windowHandle ){}
-	static AnimaApplication* m_pInstance;
+	AnimaApplication( WNDCLASSEX windowClass, HWND windowHandle ) : mWindowClass( windowClass ), mWindowHandle( windowHandle ){}
+	static AnimaApplication* mInstance;
 
-	float m_ModelRotation;
+	float mModelRotation;
 
 	class DeltaTime 
 	{
@@ -63,7 +63,7 @@ class AnimaApplication
 		{
 			return Delta;
 		}
-	} m_DeltaTime;
+	} mDeltaTime;
 
 	
 
@@ -72,13 +72,13 @@ public:
 	static HRESULT CreateInstance( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow);
 	static void DestroyInstance();
 
-	static AnimaApplication* Instance() { return m_pInstance; }
+	static AnimaApplication* Instance() { return mInstance; }
 	void Run();
 
 	void NextFrame();	// update and render the next frame
 
-	void SetTestEnvironment( TestEnvironment* testEnvironment ) { m_pTestEnvironment = testEnvironment; }
-	const TestEnvironment* GetTestEnvironment() { return m_pTestEnvironment; }
+	void SetTestEnvironment( TestEnvironment* testEnvironment ) { mTestEnvironment = testEnvironment; }
+	const TestEnvironment* GetTestEnvironment() { return mTestEnvironment; }
 
 	LRESULT OnMessage(HWND   hWnd, UINT   msg, WPARAM wParam,  LPARAM lParam );
 	void OnDeviceLost();

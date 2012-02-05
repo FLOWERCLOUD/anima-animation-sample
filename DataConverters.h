@@ -3,18 +3,20 @@
 #include "stdafx.h"
 #include "math.h"
 
+#include "SkeletonBuilder.h"
+
 class DataConverter
 {
 protected:
-	D3DDECLUSAGE m_UsageType;
-	int m_UsageIndex;
-	int m_Offset;
+	D3DDECLUSAGE mUsageType;
+	int mUsageIndex;
+	int mOffset;
 
 public:
 	DataConverter( D3DDECLUSAGE usageType, int usageIndex, int offsetInBytes )
-		: m_UsageType( usageType )
-		, m_UsageIndex( usageIndex )
-		, m_Offset( offsetInBytes )
+		: mUsageType( usageType )
+		, mUsageIndex( usageIndex )
+		, mOffset( offsetInBytes )
 	{
 	}
 
@@ -26,19 +28,19 @@ public:
 template< typename T >
 class ArrayDataConverter : public DataConverter
 {
-	const T* m_SourceData;
-	const int m_SourceSize;
+	const T* mSourceData;
+	const int mSourceSize;
 
 public:
 	ArrayDataConverter( D3DDECLUSAGE usageType, int usageIndex, int& offsetInBytes, const T* sourceData, int sourceSize )
 	: DataConverter( usageType, usageIndex, offsetInBytes )
-	, m_SourceData( sourceData )
-	, m_SourceSize( sourceSize ) {} 
+	, mSourceData( sourceData )
+	, mSourceSize( sourceSize ) {} 
 
 	const T& GetElement( int index )
 	{
-		assert( index >= 0 && index < m_SourceSize );
-		return m_SourceData[index];
+		assert( index >= 0 && index < mSourceSize );
+		return mSourceData[index];
 	}
 };
 
@@ -51,7 +53,7 @@ struct aiVector3DConverter : public ArrayDataConverter<aiVector3D>
 
 	virtual void CopyType( std::vector<D3DVERTEXELEMENT9>& out_Type )
 	{
-		D3DVERTEXELEMENT9 _result = { 0, m_Offset, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, m_UsageType, m_UsageIndex };
+		D3DVERTEXELEMENT9 _result = { 0, mOffset, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, mUsageType, mUsageIndex };
 		out_Type.push_back( _result );
 	}
 
@@ -60,7 +62,7 @@ struct aiVector3DConverter : public ArrayDataConverter<aiVector3D>
 		const aiVector3D& element = GetElement( elementIndex );
 
 		float _data[] = { element[0], element[1], element[2] };
-		memcpy( destination + m_Offset, _data, Size() );
+		memcpy( destination + mOffset, _data, Size() );
 	}
 
 };
@@ -74,7 +76,7 @@ struct aiVector3DToFloat2Converter : public ArrayDataConverter<aiVector3D>
 
 	virtual void CopyType( std::vector<D3DVERTEXELEMENT9>& out_Type )
 	{
-		D3DVERTEXELEMENT9 _result = { 0, m_Offset, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, m_UsageType, m_UsageIndex };
+		D3DVERTEXELEMENT9 _result = { 0, mOffset, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, mUsageType, mUsageIndex };
 		out_Type.push_back( _result );
 	}
 
@@ -83,7 +85,7 @@ struct aiVector3DToFloat2Converter : public ArrayDataConverter<aiVector3D>
 		const aiVector3D& element = GetElement( elementIndex );
 
 		float _data[] = { element[0], element[1] };
-		memcpy( destination + m_Offset, _data, Size() );
+		memcpy( destination + mOffset, _data, Size() );
 	}
 
 };
@@ -97,7 +99,7 @@ struct aiColor4DConverter : public ArrayDataConverter<aiColor4D>
 
 	virtual void CopyType( std::vector<D3DVERTEXELEMENT9>& out_Type )
 	{
-		D3DVERTEXELEMENT9 _result = { 0, m_Offset, D3DDECLTYPE_UBYTE4, D3DDECLMETHOD_DEFAULT, m_UsageType, m_UsageIndex };
+		D3DVERTEXELEMENT9 _result = { 0, mOffset, D3DDECLTYPE_UBYTE4, D3DDECLMETHOD_DEFAULT, mUsageType, mUsageIndex };
 		out_Type.push_back( _result );
 	}
 
@@ -113,7 +115,7 @@ struct aiColor4DConverter : public ArrayDataConverter<aiColor4D>
 			Math::normalizedFloatToByte( element[3] ),
 		};
 			
-		memcpy( destination + m_Offset, _data, Size() );
+		memcpy( destination + mOffset, _data, Size() );
 	}
 };
 
@@ -152,27 +154,27 @@ struct aiSkinningConverter : public DataConverter
 	};
 
 	typedef std::map<int, std::vector<VertexInfluence> > VertexInfluenceMap;
-	VertexInfluenceMap m_VertexInfluenceMap;
+	VertexInfluenceMap mVertexInfluenceMap;
 
-	aiSkinningConverter( int& offsetInBytes, aiBone** bones, unsigned int boneCount, Skeleton* skeleton )
+	aiSkinningConverter( int& offsetInBytes, aiBone** bones, unsigned int boneCount, const SkeletonBuilder& skeletonBuilder )
 	: DataConverter( D3DDECLUSAGE_BLENDINDICES, 0, offsetInBytes ) 
 	{
 		// build map first
 		for( unsigned int b=0; b<boneCount; ++b )
 		{
-			int boneIndex = skeleton->getBoneIndex( bones[b]->mName.data );
+			int boneIndex = skeletonBuilder.GetNodeIndex( bones[b]->mName.data ); // TODO: get bone index from animation; skeleton->getBoneIndex( bones[b]->mName.data );
 			assert( boneIndex >= 0 );
 
 			for( unsigned int w=0; w<bones[b]->mNumWeights; ++w )
 			{
 				const aiVertexWeight& aiVW = bones[b]->mWeights[w];
 				VertexInfluence vi = { boneIndex, aiVW.mWeight };
-				m_VertexInfluenceMap[aiVW.mVertexId].push_back( vi );
+				mVertexInfluenceMap[aiVW.mVertexId].push_back( vi );
 			}
 		}
 
 		// now filter weights (we only allow MAX_INFLUENCES_PER_VERTEX bone influences per vertex )
-		for( VertexInfluenceMap::iterator it = m_VertexInfluenceMap.begin(); it != m_VertexInfluenceMap.end(); ++it )
+		for( VertexInfluenceMap::iterator it = mVertexInfluenceMap.begin(); it != mVertexInfluenceMap.end(); ++it )
 		{
 			const int vertexIndex = it->first;
 			std::vector<VertexInfluence>& influences = it->second;
@@ -196,8 +198,8 @@ struct aiSkinningConverter : public DataConverter
 
 	virtual void CopyType( std::vector<D3DVERTEXELEMENT9>& out_Type )
 	{
-		D3DVERTEXELEMENT9 boneIndices = { 0, m_Offset, D3DDECLTYPE_UBYTE4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_BLENDINDICES, 0 };
-		D3DVERTEXELEMENT9 boneWeights = { 0, m_Offset + 4*sizeof(BYTE), D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_BLENDWEIGHT, 0 };
+		D3DVERTEXELEMENT9 boneIndices = { 0, mOffset, D3DDECLTYPE_UBYTE4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_BLENDINDICES, 0 };
+		D3DVERTEXELEMENT9 boneWeights = { 0, mOffset + 4*sizeof(BYTE), D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_BLENDWEIGHT, 0 };
 		
 		out_Type.push_back( boneIndices );
 		out_Type.push_back( boneWeights );
@@ -205,8 +207,8 @@ struct aiSkinningConverter : public DataConverter
 
 	void CopyData( BYTE* destination, int elementIndex  )
 	{
-		VertexInfluenceMap::const_iterator it = m_VertexInfluenceMap.find( elementIndex );
-		assert( it != m_VertexInfluenceMap.end() );
+		VertexInfluenceMap::const_iterator it = mVertexInfluenceMap.find( elementIndex );
+		assert( it != mVertexInfluenceMap.end() );
 		const std::vector<VertexInfluence>& influences = it->second;
 
 		BYTE boneIndices[MAX_INFLUENCES_PER_VERTEX];
@@ -218,7 +220,7 @@ struct aiSkinningConverter : public DataConverter
 			boneWeights[i] = influences[i].Weight;
 		}
 
- 		memcpy( destination + m_Offset, boneIndices, IndicesSize() );
-		memcpy( destination + m_Offset + IndicesSize(), boneWeights, WeightsSize() );
+ 		memcpy( destination + mOffset, boneIndices, IndicesSize() );
+		memcpy( destination + mOffset + IndicesSize(), boneWeights, WeightsSize() );
 	}
 };

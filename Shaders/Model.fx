@@ -1,5 +1,5 @@
 
-float4x4 BoneTransforms[32] : BONE_TRANSFORMS;
+float4x3 BoneTransforms[MAX_BONES_PER_MESH] : BONE_TRANSFORMS;
 float4x4 ViewProjection	: VIEWPROJECTION;
 float4 LightDirection	: LIGHTDIRECTION;
 
@@ -40,20 +40,20 @@ VertexShaderOutput Model_VS( VertexShaderInput input )
 	float4 posH = float4( input.Position.xyz, 1.f );
 	float4 normalH = float4( input.Normal.xyz, 0.f );
 	
-	float4 blendedPosition =
+	float3 blendedPosition =
 		mul( posH, BoneTransforms[input.BlendIndices.x] ) * input.BlendWeights.x + 
 		mul( posH, BoneTransforms[input.BlendIndices.y] ) * input.BlendWeights.y + 
 		mul( posH, BoneTransforms[input.BlendIndices.z] ) * input.BlendWeights.z + 
 		mul( posH, BoneTransforms[input.BlendIndices.w] ) * input.BlendWeights.w;
 		 
-	float4 blendedNormal =
+	float3 blendedNormal =
 		mul( normalH, BoneTransforms[input.BlendIndices.x] ) * input.BlendWeights.x + 
 		mul( normalH, BoneTransforms[input.BlendIndices.y] ) * input.BlendWeights.y + 
 		mul( normalH, BoneTransforms[input.BlendIndices.z] ) * input.BlendWeights.z + 
 		mul( normalH, BoneTransforms[input.BlendIndices.w] ) * input.BlendWeights.w;
 
 	result.Normal = normalize( blendedNormal.xyz );
-	result.Position =  mul( blendedPosition, ViewProjection );
+	result.Position =  mul( float4( blendedPosition.xyz, 1), ViewProjection );
 
 	return result;
 }

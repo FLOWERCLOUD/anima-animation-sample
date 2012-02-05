@@ -2,37 +2,23 @@
 #include <iostream>
 #include "RenderContext.h"
 #include "DxErr.h"
+#include "SkeletonBuilder.h"
+#include "AnimationBuilder.h"
+#include "MeshBuilder.h"
+#include "Skeleton.h"
 
 using namespace std;
 Model::Model( const std::string& fileName )
 	: mFileName( fileName )
 	, mIsLoaded( false )
-	, mScene( NULL )
 {
+	mPoseBuffer.resize( Skeleton::MAX_BONES_PER_MESH );
 }
 
 
 Model::~Model(void)
 {
-	for( unsigned int m=0; m<m_Meshes.size(); ++m )
-	{
-		Mesh& mesh = m_Meshes[m];
-
-		if( mesh.m_pEffect )
-			mesh.m_pEffect->Release();
-
-		if( mesh.m_pIndexBuffer )
-			mesh.m_pIndexBuffer->Release();
-
-		if( mesh.m_pVertexBuffer )
-			mesh.m_pVertexBuffer->Release();
-
-		if( mesh.m_pVertexDeclaration )
-			mesh.m_pVertexDeclaration->Release();
-	}
-
-	m_Meshes.clear();
-	delete mSkeleton;
+	mMeshes.clear();
 }
 
 void Model::SetRoot( const Math::Matrix& root )
@@ -41,71 +27,100 @@ void Model::SetRoot( const Math::Matrix& root )
 	memcpy( &m[0][0], root.data, sizeof(Math::Matrix) );
 	m.Transpose();
 
-	mSkeleton->setLocalTransform( 0, m );
+	mSkeleton.setLocalTransform( 0, m );
 }
 
-int Model::CreateDataConverters( aiMesh* mesh, Skeleton* skeleton, std::vector<DataConverter*>& result )
+void Model::AcquireResources( RenderContext* context )
 {
-	const int vertexCount = mesh->mNumVertices;
-	int offset = 0;
-
-	// positions, normals and tangents/bitangents
-	if( mesh->HasPositions() )	
+	for( unsigned int m=0; m<mMeshes.size(); ++m )
 	{
-		result.push_back( new aiVector3DConverter( D3DDECLUSAGE_POSITION, 0, offset, mesh->mVertices, vertexCount ) );
-		offset += result.back()->Size();
-	}
+		
+		Mesh& mesh = mMeshes[m];
+		context->Device()->CreateVertexDeclaration( &mesh.Data.mVertexElements[0], &mesh.mVertexDeclaration );
 
-	if( mesh->HasNormals() ) 
+		// now create vertex buffer
+		{
+			DX_CHECK( context->Device()->CreateVertexBuffer( mesh.Data.mVertexData.size(), D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, &mesh.mVertexBuffer, NULL ) );
+
+			BYTE* vertexData;
+			DX_CHECK( mesh.mVertexBuffer->Lock( 0, 0, reinterpret_cast<void**>( &vertexData ), 0 ) );
+				memcpy( vertexData, &mesh.Data.mVertexData[0], mesh.Data.mVertexData.size() );
+			DX_CHECK( mesh.mVertexBuffer->Unlock() );
+		}
+
+
+		// build index buffer
+		{
+
+			DX_CHECK( context->Device()->CreateIndexBuffer( mesh.Data.mIndexData.size(), D3DUSAGE_WRITEONLY, mesh.Data.mIndexFormat, D3DPOOL_DEFAULT, &mesh.mIndexBuffer, NULL ) );
+
+			BYTE* indexData;
+			DX_CHECK( mesh.mIndexBuffer->Lock( 0, 0, reinterpret_cast<void**>( &indexData ), 0 ) );
+				memcpy( indexData, &mesh.Data.mIndexData[0], mesh.Data.mIndexData.size() );
+			DX_CHECK( mesh.mIndexBuffer->Unlock() );
+
+		}
+
+		// load shaders
+		{
+			char maxBoneCount[8];
+			sprintf_s( maxBoneCount, sizeof(maxBoneCount), "%d", Skeleton::MAX_BONES_PER_MESH );
+			D3DXMACRO macros[] = { { "MAX_BONES_PER_MESH", maxBoneCount }, NULL };
+
+			LPD3DXBUFFER buf;			
+			HRESULT hr = D3DXCreateEffectFromFile( context->Device(), "../Shaders/Model.fx", macros, NULL, NULL, NULL, &mesh.mEffect, &buf );
+
+			if( FAILED(hr) && buf)
+			{
+				const char* text = reinterpret_cast<char*>( buf->GetBufferPointer() );
+				DXTRACE_ERR( text, hr );
+				buf->Release();
+			}
+		}		
+	}
+}
+
+void Model::ReleaseResources( RenderContext* context )
+{
+	for( unsigned int m=0; m<mMeshes.size(); ++m )
 	{
-		result.push_back( new aiVector3DConverter( D3DDECLUSAGE_NORMAL, 0, offset, mesh->mNormals, vertexCount ) );
-		offset += result.back()->Size();
+		Mesh& mesh = mMeshes[m];
+
+		if( mesh.mEffect )
+		{
+			mesh.mEffect->Release();
+			mesh.mEffect = NULL;
+		}
+
+		if( mesh.mIndexBuffer )
+		{
+			mesh.mIndexBuffer->Release();
+			mesh.mIndexBuffer = NULL;
+		}
+
+		if( mesh.mVertexBuffer )
+		{
+			mesh.mVertexBuffer->Release();
+			mesh.mVertexBuffer = NULL;
+		}
+
+		if( mesh.mVertexDeclaration )
+		{
+			mesh.mVertexDeclaration->Release();
+			mesh.mVertexDeclaration = NULL;
+		}
 	}
-
-	if( mesh->HasTangentsAndBitangents() )
-	{
-		result.push_back( new aiVector3DConverter( D3DDECLUSAGE_TANGENT, 0, offset, mesh->mTangents, vertexCount ) );
-		offset += result.back()->Size();
-
-		result.push_back( new aiVector3DConverter( D3DDECLUSAGE_BINORMAL, 0, offset, mesh->mBitangents, vertexCount ) );
-		offset += result.back()->Size();
-	}
-
-	for( unsigned int c=0; c < mesh->GetNumColorChannels(); ++c )
-	{
-		result.push_back( new aiColor4DConverter( D3DDECLUSAGE_COLOR, 0, offset, mesh->mColors[c], vertexCount ) );
-		offset += result.back()->Size();
-
-	}
-
-	for( unsigned int t=0; t < mesh->GetNumUVChannels(); ++t )
-	{
-		if( mesh->mNumUVComponents[t] == 2 )
-			result.push_back( new aiVector3DToFloat2Converter( D3DDECLUSAGE_TEXCOORD, t, offset, mesh->mTextureCoords[t], vertexCount ) );
-		else
-			result.push_back( new aiVector3DConverter( D3DDECLUSAGE_TEXCOORD, t, offset, mesh->mTextureCoords[t], vertexCount ) );	
-
-		offset += result.back()->Size();
-	}
-
-	if( mesh->HasBones() )
-	{
-		result.push_back( new aiSkinningConverter( offset, mesh->mBones, mesh->mNumBones, skeleton ) );
-		offset += result.back()->Size();
-	}
-
-	return offset;
 }
 
 bool Model::load( RenderContext* context )
 {
 	// Create an instance of the Importer class
-	
+	Assimp::Importer modelImporter;
 
 	// And have it read the given file with some example postprocessing
 	// Usually - if speed is not the most important aspect for you - you'll 
 	// propably to request more postprocessing than we do in this example.
-	const aiScene* scene = mModelImporter.ReadFile( mFileName, 
+	const aiScene* scene = modelImporter.ReadFile( mFileName, 
 		aiProcess_CalcTangentSpace       | 
 		aiProcess_Triangulate            |
 		aiProcess_JoinIdenticalVertices  |
@@ -116,132 +131,25 @@ bool Model::load( RenderContext* context )
 	// If the import failed, report it
 	if( !scene)
 	{
-		std::cout << mModelImporter.GetErrorString() << std::endl;
-		MessageBox( NULL,  mModelImporter.GetErrorString(), "import failed", MB_OK );
+		std::cout << modelImporter.GetErrorString() << std::endl;
+		MessageBox( NULL,  modelImporter.GetErrorString(), "import failed", MB_OK );
 
 		return false;
 	}
 
-	// load skeleton first
+	// import skeleton, animation and mesh data
 	{
-		mSkeleton = SkeletonFactory::extractSkeleton( scene );
-	}
+		SkeletonBuilder skeletonBuilder( scene );
+		AnimationBuilder animationBuilder( scene, skeletonBuilder );
+		MeshBuilder meshBuilder( scene, skeletonBuilder );
 
-	// now load animations
-	for( unsigned int a=0; a<scene->mNumAnimations; ++a )
-	{
-		m_Animations.push_back( new Animation( scene->mAnimations[a] ) );
+		skeletonBuilder.BuildSkeleton( mSkeleton );
+		animationBuilder.BuildAnimations( mAnimations );
+		meshBuilder.BuildMeshes( mMeshes );
 	}
 	
-	// finally: load meshes
-	for( unsigned int m=0; m<scene->mNumMeshes; ++m )
-	{
-		Mesh result;
-		memset( &result, 0x0, sizeof(Mesh) );
-
-		aiMesh* importedMesh = scene->mMeshes[m];
-		result.sourceMesh = importedMesh;
-
-		// create data converters first
-		std::vector<DataConverter*> dataConverters;
-		result.m_VertexSize = CreateDataConverters( importedMesh, mSkeleton, dataConverters );
-
-		// now build vertex declaration
-		std::vector<D3DVERTEXELEMENT9> vertexElements;
-		{
-			for( unsigned int i=0; i<dataConverters.size(); ++i )
-				dataConverters[i]->CopyType( vertexElements );
-
-			D3DVERTEXELEMENT9 endElement = D3DDECL_END();
-			vertexElements.push_back( endElement ); 
-
-			context->Device()->CreateVertexDeclaration( &vertexElements[0], &result.m_pVertexDeclaration );
-		}
-
-		// now create vertex buffer
-		{
-			const int vertexBufferSize = importedMesh->mNumVertices * result.m_VertexSize;
-			DX_CHECK( context->Device()->CreateVertexBuffer( vertexBufferSize, 0, 0, D3DPOOL_DEFAULT, &result.m_pVertexBuffer, NULL ) );
-
-			BYTE* vertexData;
-			DX_CHECK( result.m_pVertexBuffer->Lock( 0, 0, reinterpret_cast<void**>( &vertexData ), 0 ) );
-
-			BYTE* curOffset = reinterpret_cast<BYTE*>( vertexData );
-
-			for( unsigned int v=0; v<importedMesh->mNumVertices; ++v )
-			{
-				for( unsigned int i=0; i<dataConverters.size(); ++i )
-					dataConverters[i]->CopyData( vertexData + v * result.m_VertexSize, v );
-			}
-
-			result.m_pVertexBuffer->Unlock();
-			result.m_VertexCount = importedMesh->mNumVertices;
-		}
-
-		// delete data converters again
-		for( unsigned int i=0; i<dataConverters.size(); ++i )
-			delete dataConverters[i];
-		dataConverters.clear();
-
-		// build index buffer
-		{
-			const D3DFORMAT indexFormat = importedMesh->mNumVertices < 0xFFFF ? D3DFMT_INDEX16 : D3DFMT_INDEX32;
-			const int indexSize = indexFormat==D3DFMT_INDEX16 ?  sizeof(UINT16) : sizeof(UINT32);
-
-			const int indexBufferSize = importedMesh->mNumFaces * 3 * indexSize;
-			DX_CHECK( context->Device()->CreateIndexBuffer( indexBufferSize, 0, indexFormat, D3DPOOL_DEFAULT, &result.m_pIndexBuffer, NULL ) );
-
-			BYTE* indexData;
-			DX_CHECK( result.m_pIndexBuffer->Lock( 0, 0, reinterpret_cast<void**>( &indexData ), 0 ) );
-
-			for( unsigned int f=0; f<importedMesh->mNumFaces; ++f )
-			{
-				const aiFace& face = importedMesh->mFaces[f];
-				assert( face.mNumIndices == 3 ); // we only accept triangle meshes
-
-				UINT32 indices[3];
-
-				if( indexFormat == D3DFMT_INDEX16 )
-				{
-					assert( face.mIndices[0] < 0xFFFF && face.mIndices[1] < 0xFFFF && face.mIndices[2] < 0xFFFF );
-
-					UINT16* indices16 = reinterpret_cast<UINT16*>( indices );
-					indices16[0] = face.mIndices[0];
-					indices16[1] = face.mIndices[1];
-					indices16[2] = face.mIndices[2];
-				}
-				else
-				{
-					indices[0] = face.mIndices[0];
-					indices[1] = face.mIndices[1];
-					indices[2] = face.mIndices[2];
-				}
-
-				memcpy( indexData + f * 3 * indexSize, indices, 3*indexSize );
-			}
-
-			DX_CHECK( result.m_pIndexBuffer->Unlock() );
-			result.m_TriangleCount = importedMesh->mNumFaces;
-		}
-
-		// load shaders
-		{
-			LPD3DXBUFFER buf;
-			HRESULT hr = D3DXCreateEffectFromFile( context->Device(), "../Shaders/Model.fx", NULL, NULL, NULL, NULL, &result.m_pEffect, &buf );
-
-			if( FAILED(hr) && buf)
-			{
-				const char* text = reinterpret_cast<char*>( buf->GetBufferPointer() );
-				DXTRACE_ERR( text, hr );
-				buf->Release();
-			}
-		}
-
-		m_Meshes.push_back( result );
-	}
-
-
-	// scene->mMeshes[0]->mFaces
+	// upload to gpu
+	AcquireResources( context );
 
 	return true;
 
@@ -254,56 +162,39 @@ void Model::Render( RenderContext* context )
 	context->Device()->SetRenderState( D3DRS_ZWRITEENABLE, D3DZB_TRUE);
 	context->Device()->SetRenderState( D3DRS_ZENABLE, D3DZB_TRUE);
 
-	// evaluate pose
-	m_Animations.front()->EvaluatePose( *mSkeleton );
-
-	for( unsigned int m=0; m<m_Meshes.size(); ++m )
+	for( unsigned int m=0; m<mMeshes.size(); ++m )
 	{
-		const Mesh& mesh = m_Meshes[m];
-		D3DXHANDLE hTechnique = mesh.m_pEffect->GetTechniqueByName( "Model" );
-		D3DXHANDLE hViewProjection = mesh.m_pEffect->GetParameterBySemantic( NULL, "VIEWPROJECTION" );
+		const Mesh& mesh = mMeshes[m];
+		D3DXHANDLE hTechnique = mesh.mEffect->GetTechniqueByName( "Model" );
+		D3DXHANDLE hViewProjection = mesh.mEffect->GetParameterBySemantic( NULL, "VIEWPROJECTION" );
 
-		D3DXHANDLE hLightDirection = mesh.m_pEffect->GetParameterBySemantic( NULL, "LIGHTDIRECTION" );
-		D3DXHANDLE hBoneTransforms = mesh.m_pEffect->GetParameterBySemantic( NULL, "BONE_TRANSFORMS" );
+		D3DXHANDLE hLightDirection = mesh.mEffect->GetParameterBySemantic( NULL, "LIGHTDIRECTION" );
+		D3DXHANDLE hBoneTransforms = mesh.mEffect->GetParameterBySemantic( NULL, "BONE_TRANSFORMS" );
 		
-		DX_CHECK( context->Device()->SetVertexDeclaration( mesh.m_pVertexDeclaration ) );
-		DX_CHECK( context->Device()->SetStreamSource( 0, mesh.m_pVertexBuffer, 0, mesh.m_VertexSize ) );
-		DX_CHECK( context->Device()->SetIndices( mesh.m_pIndexBuffer ) );
+		DX_CHECK( context->Device()->SetVertexDeclaration( mesh.mVertexDeclaration ) );
+		DX_CHECK( context->Device()->SetStreamSource( 0, mesh.mVertexBuffer, 0, mesh.Data.mVertexSize ) );
+		DX_CHECK( context->Device()->SetIndices( mesh.mIndexBuffer ) );
 
 		Math::Matrix viewProjection = context->GetViewMatrix() * context->GetProjectionMatrix();
-		DX_CHECK( mesh.m_pEffect->SetMatrix( hViewProjection, &viewProjection.data ) );
+		DX_CHECK( mesh.mEffect->SetMatrix( hViewProjection, &viewProjection.data ) );
 
 
 		D3DXVECTOR4 lightDirection = Math::Vector( 1, 1, 0 ).Normal();
-		DX_CHECK( mesh.m_pEffect->SetVector( hLightDirection, &lightDirection ) );
+		DX_CHECK( mesh.mEffect->SetVector( hLightDirection, &lightDirection ) );
 
-		DX_CHECK( mesh.m_pEffect->SetTechnique( hTechnique ) );
-
-
-		const int boneMatrixCount = 32;
-		D3DXMATRIX boneMatrices[boneMatrixCount];
-
-		memset( boneMatrices, 0x0, sizeof( boneMatrices ) );
-		for( int i=0; i<mSkeleton->getBoneCount(); ++i )
-		{
-			Math::Matrix boneTransform( mSkeleton->getWorldTransform( i ) );
-			memcpy( &boneMatrices[i], &boneTransform, sizeof(D3DXMATRIX) );
-		}
-	
-
-		DX_CHECK( mesh.m_pEffect->SetMatrixArray( hBoneTransforms, boneMatrices, boneMatrixCount ) );
-
+		DX_CHECK( mesh.mEffect->SetTechnique( hTechnique ) );
+		DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms, mPoseBuffer[0], 12 * mSkeleton.getBoneCount() ) );
 	
 		UINT cPasses;
-		DX_CHECK( mesh.m_pEffect->Begin( &cPasses, 0 ) );
+		DX_CHECK( mesh.mEffect->Begin( &cPasses, 0 ) );
 		for( unsigned int iPass = 0; iPass < cPasses; iPass++ )
 		{
-			DX_CHECK( mesh.m_pEffect->BeginPass( iPass ) );
-			DX_CHECK( context->Device()->DrawIndexedPrimitive( D3DPT_TRIANGLELIST, 0, 0, mesh.m_VertexCount, 0, mesh.m_TriangleCount ) );
-			DX_CHECK( mesh.m_pEffect->EndPass() );
+			DX_CHECK( mesh.mEffect->BeginPass( iPass ) );
+			DX_CHECK( context->Device()->DrawIndexedPrimitive( D3DPT_TRIANGLELIST, 0, 0, mesh.Data.mVertexCount, 0, mesh.Data.mTriangleCount ) );
+			DX_CHECK( mesh.mEffect->EndPass() );
 		}
 
-		DX_CHECK( mesh.m_pEffect->End() );
+		DX_CHECK( mesh.mEffect->End() );
 	}
 
 	DX_CHECK( context->Device()->SetStreamSource( 0, NULL, 0, 0 ) );
@@ -312,5 +203,12 @@ void Model::Render( RenderContext* context )
 
 void Model::Update( float dt )
 {
-	m_Animations.front()->Update( dt );
+	mAnimations.front()->Update( dt );
+	mAnimations.front()->EvaluatePose( mSkeleton );
+
+	for( int i=0; i<mSkeleton.getBoneCount(); ++i )
+	{
+		mPoseBuffer[i] = mSkeleton.getWorldTransform( i );
+	}
+
 }

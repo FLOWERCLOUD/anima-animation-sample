@@ -8,8 +8,8 @@ class Input
 
 	typedef std::map<USHORT, USHORT> KeyInputType;
 
-	POINT m_MouseDelta;
-	KeyInputType m_Keys;
+	POINT mMouseDelta;
+	KeyInputType mKeys;
 
 	struct
 	{
@@ -22,9 +22,9 @@ class Input
 			USHORT Flags;
 		}KeyboardEvents[MAX_KEYBOARD_EVENTS_PER_FRAME];
 
-	} m_BufferedInput;
+	} mBufferedInput;
 
-	std::vector<BYTE> m_InputBuffer;
+	std::vector<BYTE> mInputBuffer;
 public:
 	Input();
 	~Input();
@@ -32,7 +32,7 @@ public:
 	void OnRawInput( HRAWINPUT hRawInput );
 	void Update( float dt );
 
-	POINT GetMouse() const { return m_MouseDelta; }
+	POINT GetMouse() const { return mMouseDelta; }
 	bool GetKey( USHORT VKey ) const;
 
 };

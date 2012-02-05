@@ -10,8 +10,8 @@ class FramerateCounter;
 /* Simple class for managing the 'user interface'. Basically just renders some statistics to the screen	*/
 class UserInterface : public DisplayList::Node
 {
-	FramerateCounter* m_pFrameCounter;
-	LPD3DXFONT m_Font;
+	FramerateCounter* mFrameCounter;
+	LPD3DXFONT mFont;
 
 	// Top left corner of text rendering (pixel coordinates)
 	static const int Top = 10;
@@ -22,7 +22,7 @@ class UserInterface : public DisplayList::Node
 	static const int LineWidth = 500;
 
 	D3DCOLOR TextColor;
-	bool m_RenderStatistics;
+	bool mRenderStatistics;
 
 	// helper function to abstract opengl and dx9
 	void RenderText( TCHAR* text, RECT& rect );
@@ -34,7 +34,7 @@ public:
 	void Render( RenderContext* context );
 	void ReleaseResources( RenderContext* context );
 	void AcquireResources( RenderContext* context );
-	void ToggleStatistics() { m_RenderStatistics = !m_RenderStatistics; }
+	void ToggleStatistics() { mRenderStatistics = !mRenderStatistics; }
 
 };
 

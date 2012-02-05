@@ -61,22 +61,22 @@ LRESULT CALLBACK WindowProc( HWND   hWnd,
 	return AnimaApplication::Instance()->OnMessage( hWnd, msg, wParam, lParam );
 }
 
-AnimaApplication* AnimaApplication::m_pInstance = 0;
+AnimaApplication* AnimaApplication::mInstance = 0;
 
 AnimaApplication::~AnimaApplication()
 {
-	if( m_pInstance )
+	if( mInstance )
 	{
-		UnregisterClass( "MY_WINDOWS_CLASS", m_WindowClass.hInstance );
+		UnregisterClass( "MY_WINDOWS_CLASS", mWindowClass.hInstance );
 
-		m_pUserInterface->ReleaseResources( m_pRenderContext );
-		delete m_pUserInterface;
-		delete m_pModel;
-	//	m_pCubeRenderer->ReleaseResources( m_pRenderContext );
-	//	delete m_pCubeRenderer;
+		mUserInterface->ReleaseResources( mRenderContext );
+		delete mUserInterface;
+		
+		mModel->ReleaseResources( mRenderContext );
+		delete mModel;
 
-		delete m_pFramerateCounter;
-		delete m_pRenderContext;
+		delete mFramerateCounter;
+		delete mRenderContext;
 	}
 }
 
@@ -91,7 +91,7 @@ void GLUT_OnRenderFrame()
 
 HRESULT AnimaApplication::CreateInstance( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-	assert( AnimaApplication::m_pInstance == 0 );
+	assert( AnimaApplication::mInstance == 0 );
 
 	HWND	   hWnd;
 	WNDCLASSEX winClass;
@@ -114,7 +114,7 @@ HRESULT AnimaApplication::CreateInstance( HINSTANCE hInstance, HINSTANCE hPrevIn
 		return E_FAIL;
 
 	hWnd = CreateWindowEx( NULL, "MY_WINDOWS_CLASS", 
-                             "DX9 Smiling Cubes",
+                             "DX9 Skinning Sample",
 						     WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 					         0, 0, 1024, 768, NULL, NULL, hInstance, NULL );
 
@@ -122,12 +122,19 @@ HRESULT AnimaApplication::CreateInstance( HINSTANCE hInstance, HINSTANCE hPrevIn
 		return E_FAIL;
 
 	// register raw input device
-	RAWINPUTDEVICE Rid[1];
+	RAWINPUTDEVICE Rid[2];
     Rid[0].usUsagePage = HID_USAGE_PAGE_GENERIC; 
     Rid[0].usUsage = HID_USAGE_GENERIC_MOUSE; 
     Rid[0].dwFlags = RIDEV_INPUTSINK;   
     Rid[0].hwndTarget = hWnd;
-    RegisterRawInputDevices( Rid, 1, sizeof(Rid[0]) );
+ 
+	// Keyboard
+	Rid[1].usUsagePage = HID_USAGE_PAGE_GENERIC;
+	Rid[1].usUsage = 6;
+	Rid[1].dwFlags = 0;
+	Rid[1].hwndTarget=hWnd;
+
+	RegisterRawInputDevices( Rid, 2, sizeof(Rid[0]) );
 
 
 	ShowWindow( hWnd, nCmdShow );
@@ -140,33 +147,33 @@ HRESULT AnimaApplication::CreateInstance( HINSTANCE hInstance, HINSTANCE hPrevIn
 	TestEnvironment* testEnvironment = new TestEnvironment( nArgs, szArglist );
 	Math::Random::Init( testEnvironment->GetRandomSeed() );
 
-	AnimaApplication::m_pInstance = new AnimaApplication( winClass, hWnd );
+	AnimaApplication::mInstance = new AnimaApplication( winClass, hWnd );
 
-	Instance()->m_pTestEnvironment = testEnvironment;
-	Instance()->m_pRenderContext = new RenderContext( hWnd, DISPLAY_WIDTH, DISPLAY_HEIGHT );
-	Instance()->m_pFramerateCounter = new FramerateCounter;
+	Instance()->mTestEnvironment = testEnvironment;
+	Instance()->mRenderContext = new RenderContext( hWnd, DISPLAY_WIDTH, DISPLAY_HEIGHT );
+	Instance()->mFramerateCounter = new FramerateCounter;
 
-	Instance()->m_pUserInterface = new UserInterface( m_pInstance->m_pRenderContext, m_pInstance->m_pFramerateCounter );
-	Instance()->m_pUserInterface->AcquireResources( Instance()->m_pRenderContext );
+	Instance()->mUserInterface = new UserInterface( mInstance->mRenderContext, mInstance->mFramerateCounter );
+	Instance()->mUserInterface->AcquireResources( Instance()->mRenderContext );
 
-	Instance()->m_pInput = new Input();
-	Instance()->m_pCamera = new Camera( *Instance()->m_pInput );
+	Instance()->mInput = new Input();
+	Instance()->mCamera = new Camera( *Instance()->mInput );
 	// set up renderer 
 
-	Instance()->m_pModel = new Model( "..\\Models\\cubes.dae" );
-	Instance()->m_pModel->load( Instance()->m_pRenderContext );
-	Instance()->m_pModel->SetNext( Instance()->m_pUserInterface );
+	Instance()->mModel = new Model( "..\\Models\\cubes.dae" );
+	Instance()->mModel->load( Instance()->mRenderContext );
+	Instance()->mModel->SetNext( Instance()->mUserInterface );
 
-	Instance()->m_ModelRotation = 0.f;
+	Instance()->mModelRotation = 0.f;
 
 	return S_OK;
 }
 
 void AnimaApplication::DestroyInstance()
 {
-	assert( AnimaApplication::m_pInstance );
-	delete AnimaApplication::m_pInstance;
-	AnimaApplication::m_pInstance = 0;
+	assert( AnimaApplication::mInstance );
+	delete AnimaApplication::mInstance;
+	AnimaApplication::mInstance = 0;
 }
 
 
@@ -191,24 +198,23 @@ void AnimaApplication::Run()
 
 void AnimaApplication::NextFrame()
 {
-	m_DeltaTime.Update();
+	mDeltaTime.Update();
 
-	m_pInput->Update( m_DeltaTime.Elapsed() );
+	mInput->Update( mDeltaTime.Elapsed() );
 
-	m_pFramerateCounter->FrameStart();
+	mFramerateCounter->FrameStart();
 
-	m_pCamera->update( m_DeltaTime.Elapsed() );
-	m_pModel->Update( m_DeltaTime.Elapsed() );
+	mCamera->update( mDeltaTime.Elapsed() );
+	mModel->Update( mDeltaTime.Elapsed() );
 
-	m_pRenderContext->SetViewMatrix( m_pCamera->ViewMatrix() );
-	m_pRenderContext->RenderFrame( m_pModel );
+	mRenderContext->SetViewMatrix( mCamera->ViewMatrix() );
+	mRenderContext->RenderFrame( mModel );
 
-	m_pFramerateCounter->FrameEnd();
+	mFramerateCounter->FrameEnd();
 	
-	m_ModelRotation += 0.0001f;
-	Math::Matrix modelRoot = Math::Matrix::RotationYawPitchRoll( Math::Vector( m_ModelRotation, 0.f, 0.f ) );
-	m_pModel->SetRoot( modelRoot );
-//	Sleep(10);
+	mModelRotation += 0.0001f;
+	Math::Matrix modelRoot = Math::Matrix::RotationYawPitchRoll( Math::Vector( mModelRotation, 0.f, 0.f ) );
+	mModel->SetRoot( modelRoot );
 }
 
 LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam )
@@ -230,7 +236,7 @@ LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 					break;
 
 				case 0x53:	// 'S'
-					m_pUserInterface->ToggleStatistics();
+					mUserInterface->ToggleStatistics();
 					break;
 			}
 		}
@@ -238,7 +244,7 @@ LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 
 		case WM_INPUT:
 		{
-			m_pInput->OnRawInput( (HRAWINPUT)lParam );
+			mInput->OnRawInput( (HRAWINPUT)lParam );
 		}
 		break;
 
@@ -266,14 +272,14 @@ LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 
 void AnimaApplication::OnDeviceLost()
 {
-//	m_pCubeRenderer->ReleaseResources( m_pRenderContext ); 
-	m_pUserInterface->ReleaseResources( m_pRenderContext );
+	mModel->ReleaseResources( mRenderContext ); 
+	mUserInterface->ReleaseResources( mRenderContext );
 }
 
 void AnimaApplication::OnDeviceReset()
 {
-//	m_pCubeRenderer->AcquireResources( m_pRenderContext ); 
-	m_pUserInterface->AcquireResources( m_pRenderContext );
+	mModel->AcquireResources( mRenderContext ); 
+	mUserInterface->AcquireResources( mRenderContext );
 }
 
 void AnimaApplication::TestDeviceLost()
@@ -283,7 +289,7 @@ void AnimaApplication::TestDeviceLost()
 					
 	D3DDISPLAYMODE d3ddm;
 
-	m_pRenderContext->Device()->GetDisplayMode( 0, &d3ddm );
+	mRenderContext->Device()->GetDisplayMode( 0, &d3ddm );
 
 	d3dpp.Windowed               = TRUE;
 	d3dpp.SwapEffect             = D3DSWAPEFFECT_DISCARD;
@@ -291,5 +297,5 @@ void AnimaApplication::TestDeviceLost()
 	d3dpp.EnableAutoDepthStencil = TRUE;
 	d3dpp.AutoDepthStencilFormat = D3DFMT_D16;
 	d3dpp.PresentationInterval   = D3DPRESENT_INTERVAL_IMMEDIATE;
-	m_pRenderContext->Device()->Reset( &d3dpp );
+	mRenderContext->Device()->Reset( &d3dpp );
 }

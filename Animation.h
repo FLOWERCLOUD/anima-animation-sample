@@ -2,10 +2,18 @@
 #include "stdafx.h"
 
 class Skeleton;
+class AnimationBuilder;
+
+struct NodeAnimation : public aiNodeAnim
+{
+	NodeAnimation( const aiNodeAnim& nodeAnim, int boneIndex );
+	int mBoneIndex;
+};
 
 class Animation
 {
-	const aiAnimation* mAnimation;
+	friend class AnimationBuilder;
+	aiAnimation* mAnimation;
 
 	float mTime;
 	float mDuration;
@@ -34,7 +42,7 @@ class Animation
 	}
 
 public:
-	Animation( const aiAnimation* animation );
+	Animation( aiAnimation* animation );
 	~Animation(void);
 
 	void Update( float dt );

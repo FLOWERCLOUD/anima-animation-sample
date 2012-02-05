@@ -6,22 +6,22 @@ class Input;
 
 class Camera
 {
-	Math::Vector m_Position;
-	float m_Azimuth;
-	float m_Zenith;
+	Math::Vector mPosition;
+	float mAzimuth;
+	float mZenith;
 
-	POINT m_LastCursorPos;
-	Math::Matrix m_Projection;
-	Math::Matrix m_View;
+	POINT mLastCursorPos;
+	Math::Matrix mProjection;
+	Math::Matrix mView;
 
-	const Input& m_Input;
+	const Input& mInput;
 
 public:
 	Camera( const Input& input );
 	~Camera();
 
 	void update( float dt );
-	Math::Matrix ViewMatrix() { return m_View; }
-	Math::Matrix ProjectionMatrix() { return m_Projection; }
+	Math::Matrix ViewMatrix() { return mView; }
+	Math::Matrix ProjectionMatrix() { return mProjection; }
 };
 

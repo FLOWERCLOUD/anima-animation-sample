@@ -69,6 +69,11 @@ namespace Math
 		{
 			return D3DXVec3Dot( &data, &other.data );
 		}
+		
+		static float Dot( float* a, float* b )
+		{
+			return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+		}
 	};
 
 	struct Matrix
@@ -139,6 +144,69 @@ namespace Math
 			D3DXVec3TransformNormal( &result.data, &n.data, &data );
 			return result;		
 		}
+	};
+
+	struct Matrix4x3
+	{
+		float data[4][3];
+
+		operator float*()
+		{
+			return &data[0][0];
+		}
+
+		Matrix4x3()
+		{
+			memset( data, 0x0, sizeof(data) );
+			data[0][0] = 1.f;
+			data[1][1] = 1.f;
+			data[2][2] = 1.f;
+		}
+
+
+		Matrix4x3( const aiMatrix4x4& other )
+		{
+			aiMatrix4x4 tmp( other );
+			tmp.Transpose();
+
+			memcpy( data[0], &tmp.a1, sizeof(data[0] ) );
+			memcpy( data[1], &tmp.b1, sizeof(data[1] ) );
+			memcpy( data[2], &tmp.c1, sizeof(data[2] ) );
+			memcpy( data[3], &tmp.d1, sizeof(data[3] ) );
+		}
+
+		Matrix4x3( const aiMatrix3x3& rotation, const aiVector3D& translation )
+		{
+			data[0][0] = rotation[0][0];	data[0][1] = rotation[1][0];	data[0][2] = rotation[2][0];
+			data[1][0] = rotation[0][1];	data[1][1] = rotation[1][1];	data[1][2] = rotation[2][1];
+			data[2][0] = rotation[0][2];	data[2][1] = rotation[1][2];	data[2][2] = rotation[2][2];
+			data[3][0] = translation.x;		data[3][1] = translation.y;		data[3][2] = translation.z;
+		}
+
+		Matrix4x3 operator*( const Matrix4x3& right ) const
+		{
+			Matrix4x3 result;
+			result.data[0][0] = data[0][0] * right.data[0][0] + data[0][1] * right.data[1][0] + data[0][2] * right.data[2][0];
+			result.data[0][1] = data[0][0] * right.data[0][1] + data[0][1] * right.data[1][1] + data[0][2] * right.data[2][1];
+			result.data[0][2] = data[0][0] * right.data[0][2] + data[0][1] * right.data[1][2] + data[0][2] * right.data[2][2];
+
+			result.data[1][0] = data[1][0] * right.data[0][0] + data[1][1] * right.data[1][0] + data[1][2] * right.data[2][0];
+			result.data[1][1] = data[1][0] * right.data[0][1] + data[1][1] * right.data[1][1] + data[1][2] * right.data[2][1];
+			result.data[1][2] = data[1][0] * right.data[0][2] + data[1][1] * right.data[1][2] + data[1][2] * right.data[2][2];
+
+			result.data[2][0] = data[2][0] * right.data[0][0] + data[2][1] * right.data[1][0] + data[2][2] * right.data[2][0];
+			result.data[2][1] = data[2][0] * right.data[0][1] + data[2][1] * right.data[1][1] + data[2][2] * right.data[2][1];
+			result.data[2][2] = data[2][0] * right.data[0][2] + data[2][1] * right.data[1][2] + data[2][2] * right.data[2][2];
+
+			result.data[3][0] = data[3][0] * right.data[0][0] + data[3][1] * right.data[1][0] + data[3][2] * right.data[2][0] + right.data[3][0];
+			result.data[3][1] = data[3][0] * right.data[0][1] + data[3][1] * right.data[1][1] + data[3][2] * right.data[2][1] + right.data[3][1];
+			result.data[3][2] = data[3][0] * right.data[0][2] + data[3][1] * right.data[1][2] + data[3][2] * right.data[2][2] + right.data[3][2];
+
+			return result;
+
+		}
+
+	
 	};
 
 	struct mayaMatrix

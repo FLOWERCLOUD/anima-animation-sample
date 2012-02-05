@@ -4,13 +4,13 @@
 class FramerateCounter
 {
 	static const int NUM_SAMPLES_IN_AVERAGE = 100;
-	float m_Samples[NUM_SAMPLES_IN_AVERAGE];	// delta time samples
+	float mSamples[NUM_SAMPLES_IN_AVERAGE];	// delta time samples
 
-	int m_CurrentSample;
-	int m_SampleCount;
+	int mCurrentSample;
+	int mSampleCount;
 
-	LONGLONG m_FrameStart;
-	LONGLONG m_TicksPerSecond;	// resolution of high performance counter
+	LONGLONG mFrameStart;
+	LONGLONG mTicksPerSecond;	// resolution of high performance counter
 
 public:
 	FramerateCounter(void);
