@@ -48,18 +48,29 @@ class Model : public DisplayList::Node
 	std::vector<Mesh> mMeshes;
 	std::vector<Animation*> mAnimations;
 
+	Animation* mCurrentAnimation;
+	int mAnimationPaused;
+
+	int mShaderTest;
+
 	int CreateDataConverters( aiMesh* mesh, SkeletonBuilder* skeletonBuilder, std::vector<DataConverter*>& result );
 
 public:
 	Model( const std::string& fileName );
 	~Model(void);
 
-	bool load( RenderContext* context );
+	bool Load( RenderContext* context );
 	void AcquireResources( RenderContext* context );
 	void ReleaseResources( RenderContext* context );
 
 
 	void SetRoot( const Math::Matrix& root );
+	void PlayAnimation( unsigned int animationIndex, float playbackSpeed = 0.f );
+	void PauseAnimation();
+	void ToggleAnimationPlayback();
+	
+	void ToggleShaderTest();
+
 
 	void Render( RenderContext* context );
 	void Update( float dt );

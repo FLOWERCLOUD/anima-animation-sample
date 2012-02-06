@@ -1,18 +1,22 @@
 #include "Camera.h"
 #include "Input.h"
 #include <iostream>
+#include "RenderContext.h"
 
 #define KEY_DOWN 0x8000 
-#define MOVEMENT_SPEED 1.f
-#define ROTATION_SPEED 1.5f
+#define MOVEMENT_SPEED 5.f
+#define ROTATION_SPEED 2.5f
 
-Camera::Camera( const Input& input )
+Camera::Camera( const Input& input, const RenderContext& renderContext )
 	: mAzimuth( Math::Pi/2.f )
-	, mZenith( Math::Pi/2.f + 25.f / 180.f * Math::Pi )
+	, mZenith( Math::Pi/2.f + 10.f / 180.f * Math::Pi )
 	, mInput( input )
 {
-	mProjection = Math::Matrix::Perspective( 45.0f, 1024.f / 768.f, 1.0f, 1000.0f );
-	mPosition = Math::Vector( 0, 1.5, -2 );
+	float w = static_cast<float>( renderContext.GetPresentationParameters().BackBufferWidth );
+	float h = static_cast<float>( renderContext.GetPresentationParameters().BackBufferHeight );
+
+	mProjection = Math::Matrix::Perspective( 45.0f, w / h, 1.0f, 1000.0f );
+	mPosition = Math::Vector( 0, 5, -10 );
 	GetCursorPos( &mLastCursorPos );
 }
 

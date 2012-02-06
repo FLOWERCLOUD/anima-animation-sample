@@ -11,6 +11,8 @@ using namespace std;
 Model::Model( const std::string& fileName )
 	: mFileName( fileName )
 	, mIsLoaded( false )
+	, mCurrentAnimation( NULL )
+	, mShaderTest( 0 )
 {
 	mPoseBuffer.resize( Skeleton::MAX_BONES_PER_MESH );
 }
@@ -112,7 +114,7 @@ void Model::ReleaseResources( RenderContext* context )
 	}
 }
 
-bool Model::load( RenderContext* context )
+bool Model::Load( RenderContext* context )
 {
 	// Create an instance of the Importer class
 	Assimp::Importer modelImporter;
@@ -155,6 +157,32 @@ bool Model::load( RenderContext* context )
 
 }
 
+void Model::PlayAnimation( unsigned int animationIndex, float playbackSpeed )
+{
+	if( animationIndex >= 0 && animationIndex < mAnimations.size() )
+	{
+		mCurrentAnimation = mAnimations[animationIndex];
+		mCurrentAnimation->Play( playbackSpeed );
+		mAnimationPaused = false;
+	}
+}
+
+void Model::PauseAnimation()
+{
+	mAnimationPaused = true;
+}
+
+void Model::ToggleAnimationPlayback()
+{
+	mAnimationPaused = !mAnimationPaused;
+}
+
+void Model::ToggleShaderTest()
+{
+	mShaderTest = mShaderTest==0 ? 1 : 0;
+}
+
+
 
 void Model::Render( RenderContext* context )
 {
@@ -170,6 +198,7 @@ void Model::Render( RenderContext* context )
 
 		D3DXHANDLE hLightDirection = mesh.mEffect->GetParameterBySemantic( NULL, "LIGHTDIRECTION" );
 		D3DXHANDLE hBoneTransforms = mesh.mEffect->GetParameterBySemantic( NULL, "BONE_TRANSFORMS" );
+		D3DXHANDLE hShaderTest = mesh.mEffect->GetParameterBySemantic( NULL, "SHADER_TEST" );
 		
 		DX_CHECK( context->Device()->SetVertexDeclaration( mesh.mVertexDeclaration ) );
 		DX_CHECK( context->Device()->SetStreamSource( 0, mesh.mVertexBuffer, 0, mesh.Data.mVertexSize ) );
@@ -178,12 +207,12 @@ void Model::Render( RenderContext* context )
 		Math::Matrix viewProjection = context->GetViewMatrix() * context->GetProjectionMatrix();
 		DX_CHECK( mesh.mEffect->SetMatrix( hViewProjection, &viewProjection.data ) );
 
-
 		D3DXVECTOR4 lightDirection = Math::Vector( 1, 1, 0 ).Normal();
 		DX_CHECK( mesh.mEffect->SetVector( hLightDirection, &lightDirection ) );
 
 		DX_CHECK( mesh.mEffect->SetTechnique( hTechnique ) );
 		DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms, mPoseBuffer[0], 12 * mSkeleton.getBoneCount() ) );
+		DX_CHECK( mesh.mEffect->SetInt( hShaderTest, mShaderTest ) );
 	
 		UINT cPasses;
 		DX_CHECK( mesh.mEffect->Begin( &cPasses, 0 ) );
@@ -203,8 +232,11 @@ void Model::Render( RenderContext* context )
 
 void Model::Update( float dt )
 {
-	mAnimations.front()->Update( dt );
-	mAnimations.front()->EvaluatePose( mSkeleton );
+	if( mCurrentAnimation && !mAnimationPaused )
+	{
+		mCurrentAnimation->Update( dt );
+		mCurrentAnimation->EvaluatePose( mSkeleton );	
+	}
 
 	for( int i=0; i<mSkeleton.getBoneCount(); ++i )
 	{
@@ -212,3 +244,4 @@ void Model::Update( float dt )
 	}
 
 }
+ 

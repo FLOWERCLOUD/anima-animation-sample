@@ -16,8 +16,8 @@ class Model;
 		Owns instances of all other classes, creates the application window and handles keyboad input				*/
 class AnimaApplication
 {
-	static const int DISPLAY_WIDTH = 1024;
-	static const int DISPLAY_HEIGHT = 768; 
+	static const int DISPLAY_WIDTH = 1280;
+	static const int DISPLAY_HEIGHT = 720; 
 
 	RenderContext*  mRenderContext;
 	FramerateCounter* mFramerateCounter;

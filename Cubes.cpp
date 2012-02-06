@@ -116,7 +116,7 @@ HRESULT AnimaApplication::CreateInstance( HINSTANCE hInstance, HINSTANCE hPrevIn
 	hWnd = CreateWindowEx( NULL, "MY_WINDOWS_CLASS", 
                              "DX9 Skinning Sample",
 						     WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-					         0, 0, 1024, 768, NULL, NULL, hInstance, NULL );
+					         0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT, NULL, NULL, hInstance, NULL );
 
 	if( hWnd == NULL )
 		return E_FAIL;
@@ -157,12 +157,13 @@ HRESULT AnimaApplication::CreateInstance( HINSTANCE hInstance, HINSTANCE hPrevIn
 	Instance()->mUserInterface->AcquireResources( Instance()->mRenderContext );
 
 	Instance()->mInput = new Input();
-	Instance()->mCamera = new Camera( *Instance()->mInput );
+	Instance()->mCamera = new Camera( *Instance()->mInput, *Instance()->mRenderContext );
 	// set up renderer 
 
-	Instance()->mModel = new Model( "..\\Models\\cubes.dae" );
-	Instance()->mModel->load( Instance()->mRenderContext );
+	Instance()->mModel = new Model( "..\\Models\\frank.dae" );
+	Instance()->mModel->Load( Instance()->mRenderContext );
 	Instance()->mModel->SetNext( Instance()->mUserInterface );
+	Instance()->mModel->PlayAnimation( 0, 0.25f );
 
 	Instance()->mModelRotation = 0.f;
 
@@ -213,7 +214,7 @@ void AnimaApplication::NextFrame()
 	mFramerateCounter->FrameEnd();
 	
 	mModelRotation += 0.0001f;
-	Math::Matrix modelRoot = Math::Matrix::RotationYawPitchRoll( Math::Vector( mModelRotation, 0.f, 0.f ) );
+	Math::Matrix modelRoot = Math::Matrix::RotationYawPitchRoll( Math::Vector( mModelRotation, Math::Pi / 2.f, 0.f ) );
 	mModel->SetRoot( modelRoot );
 }
 
@@ -226,6 +227,9 @@ LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 		{
 			switch( wParam )
 			{
+				case VK_SPACE:
+					mModel->ToggleAnimationPlayback();
+					break;
 				case VK_ESCAPE:
 				case 0x51: // 'Q'
 					PostQuitMessage(0);
@@ -237,6 +241,9 @@ LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 
 				case 0x53:	// 'S'
 					mUserInterface->ToggleStatistics();
+					break;
+				case 0x54: // 'T'
+					mModel->ToggleShaderTest();
 					break;
 			}
 		}

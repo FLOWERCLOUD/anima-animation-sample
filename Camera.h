@@ -3,6 +3,7 @@
 #include "math.h"
 
 class Input;
+class RenderContext;
 
 class Camera
 {
@@ -17,7 +18,7 @@ class Camera
 	const Input& mInput;
 
 public:
-	Camera( const Input& input );
+	Camera( const Input& input, const RenderContext& renderContext );
 	~Camera();
 
 	void update( float dt );

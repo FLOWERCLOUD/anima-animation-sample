@@ -17,6 +17,8 @@ class RenderContext
 	LPDIRECT3D9             mD3D;
 	LPDIRECT3DDEVICE9       mDevice;
 	D3DPRESENT_PARAMETERS	mPresentParameters;	// needed when device is reset
+	int mDisplayWidth;
+	int mDisplayHeight;
 
 	Math::Matrix mViewMatrix;
 	Math::Matrix mProjectionMatrix;
@@ -25,6 +27,7 @@ public:
 	RenderContext( HWND hWnd, int width, int height );
 	~RenderContext(void);
 
+	const D3DPRESENT_PARAMETERS& GetPresentationParameters() const { return mPresentParameters; }
 	LPDIRECT3DDEVICE9 Device() { return mDevice; }
 
 	void RenderFrame( DisplayList::Node* displayList );

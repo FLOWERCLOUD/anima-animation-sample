@@ -15,10 +15,13 @@ class Animation
 	friend class AnimationBuilder;
 	aiAnimation* mAnimation;
 
+	enum PlaybackState { PLAYING_FORWARD, PLAYING_BACKWARD, STOPPED };
+
 	float mTime;
 	float mDuration;
+	float mPlaybackSpeed;
 
-	bool mPlayForward;
+	PlaybackState mPlaybackState;
 
 	template<typename T, typename R>
 	void evaluateChannel( T* data, int dataSize, float t, R& result )
@@ -45,6 +48,7 @@ public:
 	Animation( aiAnimation* animation );
 	~Animation(void);
 
+	void Play( float playbackSpeed );
 	void Update( float dt );
 	void EvaluatePose( Skeleton& targetSkeleton );
 };
