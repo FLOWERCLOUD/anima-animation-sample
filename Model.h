@@ -36,6 +36,8 @@ class Model : public DisplayList::Node
 		IDirect3DIndexBuffer9* mIndexBuffer;
 
 		ID3DXEffect* mEffect;
+		IDirect3DTexture9* mDiffuseMap;
+		IDirect3DTexture9* mNormalMap;
 
 		MeshData Data;
 

@@ -6,6 +6,7 @@
 #include "AnimationBuilder.h"
 #include "MeshBuilder.h"
 #include "Skeleton.h"
+#include "Debug.h"
 
 using namespace std;
 Model::Model( const std::string& fileName )
@@ -78,7 +79,13 @@ void Model::AcquireResources( RenderContext* context )
 				DXTRACE_ERR( text, hr );
 				buf->Release();
 			}
-		}		
+		}
+
+		// load textures
+		{
+			DX_CHECK( D3DXCreateTextureFromFile( context->Device(), "../Textures/frank_D.jpg", &mesh.mDiffuseMap ) );
+			DX_CHECK( D3DXCreateTextureFromFile( context->Device(), "../Textures/frank_N.jpg", &mesh.mNormalMap ) );
+		}
 	}
 }
 
@@ -111,6 +118,18 @@ void Model::ReleaseResources( RenderContext* context )
 			mesh.mVertexDeclaration->Release();
 			mesh.mVertexDeclaration = NULL;
 		}
+
+		if( mesh.mDiffuseMap )
+		{
+			mesh.mDiffuseMap->Release();
+			mesh.mDiffuseMap = NULL;
+		}
+
+		if( mesh.mNormalMap )
+		{
+			mesh.mNormalMap->Release();
+			mesh.mNormalMap = NULL;
+		}
 	}
 }
 
@@ -126,8 +145,7 @@ bool Model::Load( RenderContext* context )
 		aiProcess_CalcTangentSpace       | 
 		aiProcess_Triangulate            |
 		aiProcess_JoinIdenticalVertices  |
-		aiProcess_MakeLeftHanded		 |
-		aiProcess_FlipWindingOrder		 |
+		aiProcess_ConvertToLeftHanded	|	
 		aiProcess_SortByPType);
 
 	// If the import failed, report it
@@ -138,6 +156,18 @@ bool Model::Load( RenderContext* context )
 
 		return false;
 	}
+
+	/*
+	for( int m=0; m<scene->mNumMaterials; ++m )
+	{
+		aiMaterial* mat = scene->mMaterials[m];
+		for( int p=0; p<mat->mNumProperties; ++p )
+		{
+			aiMaterialProperty* prop = mat->mProperties[p];
+			DebugPrint( "%s\n", prop->mKey.data );
+		}
+	}
+	*/
 
 	// import skeleton, animation and mesh data
 	{
@@ -199,6 +229,9 @@ void Model::Render( RenderContext* context )
 		D3DXHANDLE hLightDirection = mesh.mEffect->GetParameterBySemantic( NULL, "LIGHTDIRECTION" );
 		D3DXHANDLE hBoneTransforms = mesh.mEffect->GetParameterBySemantic( NULL, "BONE_TRANSFORMS" );
 		D3DXHANDLE hShaderTest = mesh.mEffect->GetParameterBySemantic( NULL, "SHADER_TEST" );
+		D3DXHANDLE hDiffuseMap = mesh.mEffect->GetParameterBySemantic( NULL, "DIFFUSE_MAP" );
+		D3DXHANDLE hNormalMap = mesh.mEffect->GetParameterBySemantic( NULL, "NORMAL_MAP" );
+
 		
 		DX_CHECK( context->Device()->SetVertexDeclaration( mesh.mVertexDeclaration ) );
 		DX_CHECK( context->Device()->SetStreamSource( 0, mesh.mVertexBuffer, 0, mesh.Data.mVertexSize ) );
@@ -207,12 +240,16 @@ void Model::Render( RenderContext* context )
 		Math::Matrix viewProjection = context->GetViewMatrix() * context->GetProjectionMatrix();
 		DX_CHECK( mesh.mEffect->SetMatrix( hViewProjection, &viewProjection.data ) );
 
-		D3DXVECTOR4 lightDirection = Math::Vector( 1, 1, 0 ).Normal();
+		D3DXVECTOR4 lightDirection = Math::Vector( 0.5, 1, 0 ).Normal();
 		DX_CHECK( mesh.mEffect->SetVector( hLightDirection, &lightDirection ) );
 
-		DX_CHECK( mesh.mEffect->SetTechnique( hTechnique ) );
 		DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms, mPoseBuffer[0], 12 * mSkeleton.getBoneCount() ) );
 		DX_CHECK( mesh.mEffect->SetInt( hShaderTest, mShaderTest ) );
+
+		DX_CHECK( mesh.mEffect->SetTexture( hDiffuseMap, mesh.mDiffuseMap ) );
+		DX_CHECK( mesh.mEffect->SetTexture( hNormalMap, mesh.mNormalMap ) );
+
+		DX_CHECK( mesh.mEffect->SetTechnique( hTechnique ) );
 	
 		UINT cPasses;
 		DX_CHECK( mesh.mEffect->Begin( &cPasses, 0 ) );
