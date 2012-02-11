@@ -17,8 +17,8 @@ SkeletalModel::SkeletalModel( const std::string& fileName )
 	, mShaderTest( 0 )
 	, mCurrentAnimationMethod( SAM_LINEAR_BLEND_SKINNING )
 {
-	mSkeletons[SAM_LINEAR_BLEND_SKINNING] = new Skeleton_Matrix43();
-	mPoseBuffers[SAM_LINEAR_BLEND_SKINNING] = new PoseBufferGeneric<Skeleton_Matrix43>();
+	mSkeletons[SAM_LINEAR_BLEND_SKINNING] = new Skeleton_Matrix34();
+	mPoseBuffers[SAM_LINEAR_BLEND_SKINNING] = new PoseBufferGeneric<Skeleton_Matrix34>();
 
 	mSkeletons[SAM_DUAL_QUATERNION] = new Skeleton_DualQuaternion();
 	mPoseBuffers[SAM_DUAL_QUATERNION] = new PoseBufferGeneric<Skeleton_DualQuaternion>();
@@ -69,16 +69,13 @@ void SkeletalModel::AcquireResources( RenderContext* context )
 
 		// load shaders
 		{
+			int maxFloats = 0;
+			for( int m=0; m<SAM_COUNT; ++m )
+				maxFloats = max( maxFloats, mPoseBuffers[m]->Size() / sizeof(float) );
 
-			char maxBoneCountLBS[8], maxBoneCountDQ[8];
-			sprintf_s( maxBoneCountLBS, sizeof(maxBoneCountLBS), "%d", mSkeletons[SAM_LINEAR_BLEND_SKINNING]->GetMaxBoneCount() );
-			sprintf_s( maxBoneCountLBS, sizeof(maxBoneCountDQ), "%d", mSkeletons[SAM_DUAL_QUATERNION]->GetMaxBoneCount() );
-			D3DXMACRO macros[] =
-			{ 
-				{ "MAX_BONES_PER_MESH_LBS", maxBoneCountLBS }, 
-				{ "MAX_BONES_PER_MESH_DQ", maxBoneCountDQ },
-				NULL 
-			};
+			char maxFloats4s[8];
+			sprintf_s( maxFloats4s, sizeof(maxFloats4s), "%d", maxFloats / 4 );
+			D3DXMACRO macros[] = { { "MAX_FLOAT_VECTORS_PER_MESH", maxFloats4s }, NULL };
 
 			LPD3DXBUFFER buf;			
 			HRESULT hr = D3DXCreateEffectFromFile( context->Device(), "../Shaders/Model.fx", macros, NULL, NULL, NULL, &mesh.mEffect, &buf );
@@ -192,7 +189,7 @@ bool SkeletalModel::Load( RenderContext* context )
 		MeshBuilder meshBuilder( scene, skeletonBuilder );
 
 		// build all skeletons
-		skeletonBuilder.BuildSkeleton( dynamic_cast<Skeleton_Matrix43*>( mSkeletons[SAM_LINEAR_BLEND_SKINNING] ) );
+		skeletonBuilder.BuildSkeleton( dynamic_cast<Skeleton_Matrix34*>( mSkeletons[SAM_LINEAR_BLEND_SKINNING] ) );
 		skeletonBuilder.BuildSkeleton( dynamic_cast<Skeleton_DualQuaternion*>( mSkeletons[SAM_DUAL_QUATERNION] ) );
 		
 
@@ -267,6 +264,7 @@ void SkeletalModel::Render( RenderContext* context )
 			PoseBufferInterface& poseBuffer = *mPoseBuffers[mCurrentAnimationMethod];
 			const float* poseData =  reinterpret_cast<const float*>( poseBuffer[0] );
 			DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms, poseData, poseBuffer.Size() / sizeof(float) ) );
+		//	DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms2, poseData, poseBuffer.Size() / sizeof(float) ) );
 		}
 
 		DX_CHECK( mesh.mEffect->SetInt( hShaderTest, mShaderTest ) );

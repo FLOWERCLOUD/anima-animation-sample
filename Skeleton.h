@@ -76,7 +76,14 @@ public:
 	}
 };
 
-typedef SkeletonGeneric< Math::Matrix4x3, 62 > Skeleton_Matrix43;
+
 typedef SkeletonGeneric< Math::DualQuaternion, 62 > Skeleton_DualQuaternion;
 
-
+class Skeleton_Matrix34 : public SkeletonGeneric< Math::Matrix3x4, 62 >
+{
+public:
+	virtual Math::Matrix3x4 Concatenate( const Math::Matrix3x4& first, const Math::Matrix3x4& second ) const
+	{
+		return second * first;
+	}
+};

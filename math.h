@@ -146,16 +146,19 @@ namespace Math
 		}
 	};
 
-	struct Matrix4x3
+	/* NOTE: this matrix is meant to be used for POST multiplication, e.g. Matrix * vector as opposed of DirectX's default vector * Matrix.
+	* the Matrix layout has been defined like this on purpose so individual columns can be passed directly to the shader (hlsl uses column-major 
+	* matrices by default) */
+	struct Matrix3x4
 	{
-		float data[4][3];
+		float data[3][4];
 
 		operator float*()
 		{
 			return &data[0][0];
 		}
 
-		Matrix4x3()
+		Matrix3x4()
 		{
 			memset( data, 0x0, sizeof(data) );
 			data[0][0] = 1.f;
@@ -164,44 +167,39 @@ namespace Math
 		}
 
 
-		Matrix4x3( const aiMatrix4x4& other )
+		Matrix3x4( const aiMatrix4x4& other )
 		{
-			aiMatrix4x4 tmp( other );
-			tmp.Transpose();
-
-			memcpy( data[0], &tmp.a1, sizeof(data[0] ) );
-			memcpy( data[1], &tmp.b1, sizeof(data[1] ) );
-			memcpy( data[2], &tmp.c1, sizeof(data[2] ) );
-			memcpy( data[3], &tmp.d1, sizeof(data[3] ) );
+			memcpy( &data[0][0], &other[0][0], sizeof(Matrix3x4) );
 		}
 
-		Matrix4x3( const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
+		Matrix3x4( const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
 		{
 			aiMatrix3x3 r = rotation.GetMatrix();
-			data[0][0] = r[0][0] * scale.x;		data[0][1] = r[1][0];				data[0][2] = r[2][0];
-			data[1][0] = r[0][1];				data[1][1] = r[1][1] * scale.y;		data[1][2] = r[2][1];
-			data[2][0] = r[0][2];				data[2][1] = r[1][2];				data[2][2] = r[2][2] * scale.z;
-			data[3][0] = translation.x;			data[3][1] = translation.y;			data[3][2] = translation.z;
+			memcpy( &data[0], &r[0][0], sizeof(data[0]) );
+			memcpy( &data[1], &r[1][0], sizeof(data[1]) );
+			memcpy( &data[2], &r[2][0], sizeof(data[2]) );
+
+			data[0][0] *= scale.x;			data[1][1] *= scale.y;			data[2][2] *= scale.z;
+			data[0][3] = translation.x;		data[1][3] = translation.y;		data[2][3] = translation.z;
 		}
 
-		Matrix4x3 operator*( const Matrix4x3& right ) const
+		Matrix3x4 operator*( const Matrix3x4& right ) const
 		{
-			Matrix4x3 result;
+			Matrix3x4 result;
 			result.data[0][0] = data[0][0] * right.data[0][0] + data[0][1] * right.data[1][0] + data[0][2] * right.data[2][0];
 			result.data[0][1] = data[0][0] * right.data[0][1] + data[0][1] * right.data[1][1] + data[0][2] * right.data[2][1];
 			result.data[0][2] = data[0][0] * right.data[0][2] + data[0][1] * right.data[1][2] + data[0][2] * right.data[2][2];
+			result.data[0][3] = data[0][0] * right.data[0][3] + data[0][1] * right.data[1][3] + data[0][2] * right.data[2][3] + data[0][3];
 
 			result.data[1][0] = data[1][0] * right.data[0][0] + data[1][1] * right.data[1][0] + data[1][2] * right.data[2][0];
 			result.data[1][1] = data[1][0] * right.data[0][1] + data[1][1] * right.data[1][1] + data[1][2] * right.data[2][1];
 			result.data[1][2] = data[1][0] * right.data[0][2] + data[1][1] * right.data[1][2] + data[1][2] * right.data[2][2];
+			result.data[1][3] = data[1][0] * right.data[0][3] + data[1][1] * right.data[1][3] + data[1][2] * right.data[2][3] + data[1][3];
 
 			result.data[2][0] = data[2][0] * right.data[0][0] + data[2][1] * right.data[1][0] + data[2][2] * right.data[2][0];
 			result.data[2][1] = data[2][0] * right.data[0][1] + data[2][1] * right.data[1][1] + data[2][2] * right.data[2][1];
 			result.data[2][2] = data[2][0] * right.data[0][2] + data[2][1] * right.data[1][2] + data[2][2] * right.data[2][2];
-
-			result.data[3][0] = data[3][0] * right.data[0][0] + data[3][1] * right.data[1][0] + data[3][2] * right.data[2][0] + right.data[3][0];
-			result.data[3][1] = data[3][0] * right.data[0][1] + data[3][1] * right.data[1][1] + data[3][2] * right.data[2][1] + right.data[3][1];
-			result.data[3][2] = data[3][0] * right.data[0][2] + data[3][1] * right.data[1][2] + data[3][2] * right.data[2][2] + right.data[3][2];
+			result.data[2][3] = data[2][0] * right.data[0][3] + data[2][1] * right.data[1][3] + data[2][2] * right.data[2][3] + data[2][3];
 
 			return result;
 
@@ -224,6 +222,8 @@ namespace Math
 			: real( realPart )
 			, dual( dualPart )
 		{}
+
+		
 		
 		DualQuaternion( const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
 		{

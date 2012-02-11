@@ -1,8 +1,9 @@
-#ifndef MAX_BONES_PER_MESH
-#define MAX_BONES_PER_MESH 60
-#endif
+//#ifndef MAX_FLOAT_VECTORS_PER_MESH
+#define MAX_FLOAT_VECTORS_PER_MESH 60*3
+//#endif
 
-float4x3 BoneTransforms[MAX_BONES_PER_MESH] : BONE_TRANSFORMS;
+float4 BoneTransforms[60*3] : BONE_TRANSFORMS : register(c0);
+
 float4x4 ViewProjection	: VIEWPROJECTION;
 float4 LightDirection	: LIGHTDIRECTION;
 
@@ -14,7 +15,7 @@ struct VertexShaderInput
     float3 Normal			: NORMAL;
 	float3 Tangent			: TANGENT;
 	float3 Binormal			: BINORMAL;
-	float2 TexCoord			: TEXCOORD0;
+	float2 TexCoord			: TEXCOORD0; 
 	float4 BlendWeights		: BLENDWEIGHT0;
 	uint4 BlendIndices		: BLENDINDICES0;
 };
@@ -48,32 +49,41 @@ sampler DiffuseSampler = sampler_state
     MipFilter = Linear;
 };
 
-
+float3x4 GetBoneMatrix( int boneIndex )
+{
+	// return BoneTransforms[boneIndex];
+	
+	return float3x4(
+		BoneTransforms[boneIndex*3 + 0],
+		BoneTransforms[boneIndex*3 + 1],
+		BoneTransforms[boneIndex*3 + 2]
+	);
+	
+}
 
 VertexShaderOutput Model_VS( VertexShaderInput input )
 {
 	VertexShaderOutput result;
-	result.TexCoord = input.TexCoord;
+	result.TexCoord = input.TexCoord; 
 	result.Color = float4( 0.75, 0.75, 0.75, 1 );
 	
-	float4x3 blendedTransform =
-		BoneTransforms[input.BlendIndices.x] * input.BlendWeights.x + 
-		BoneTransforms[input.BlendIndices.y] * input.BlendWeights.y + 
-		BoneTransforms[input.BlendIndices.z] * input.BlendWeights.z + 
-		BoneTransforms[input.BlendIndices.w] * input.BlendWeights.w;
+	float3x4 blendedTransform =
+		GetBoneMatrix( input.BlendIndices.x ) * input.BlendWeights.x + 
+		GetBoneMatrix( input.BlendIndices.y ) * input.BlendWeights.y + 
+		GetBoneMatrix( input.BlendIndices.z ) * input.BlendWeights.z + 
+		GetBoneMatrix( input.BlendIndices.w ) * input.BlendWeights.w;
 
+	result.Normal = mul( blendedTransform, float4( input.Normal, 0 ) );
+	result.Tangent = mul( blendedTransform, float4( input.Tangent, 0 ) );
+	result.Binormal = mul( blendedTransform, float4( input.Binormal, 0 ) );
 
-	result.Normal = mul( float4( input.Normal, 0 ), blendedTransform );
-	result.Tangent = mul( float4( input.Tangent, 0 ), blendedTransform );
-	result.Binormal = mul( float4( input.Binormal, 0 ), blendedTransform );
-
-	float3 blendedPosition = mul( float4( input.Position.xyz, 1 ), blendedTransform );
+	float3 blendedPosition = mul( blendedTransform, float4( input.Position.xyz, 1 ) );
 	result.Position =  mul( float4( blendedPosition.xyz, 1), ViewProjection );
 
 	return result;
 }
 
-
+ 
 float4 Model_PS( VertexShaderOutput input ) : COLOR0
 {
 
