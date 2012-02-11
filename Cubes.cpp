@@ -213,9 +213,13 @@ void AnimaApplication::NextFrame()
 
 	mFramerateCounter->FrameEnd();
 	
-	mModelRotation += 0.0001f;
-	Math::Matrix modelRoot = Math::Matrix::RotationYawPitchRoll( Math::Vector( mModelRotation, Math::Pi / 2.f, 0.f ) );
-	mModel->SetRoot( modelRoot );
+	mModelRotation += 0.0001f; 
+	{
+		aiQuaternion rotateUpright( 0, 0,  Math::Pi / 2.f );
+		aiQuaternion rotateY( 0, mModelRotation, 0 );
+
+		mModel->SetRoot( aiVector3D(0.f, 0.f, 0.f ), rotateUpright*rotateY );
+	}
 }
 
 LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam )

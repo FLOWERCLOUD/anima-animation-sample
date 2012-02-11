@@ -45,7 +45,7 @@ class Model : public DisplayList::Node
 		
 	};
 
-	Skeleton mSkeleton;
+	Skeleton_MatrixBased mSkeleton;
 	std::vector<Math::Matrix4x3> mPoseBuffer;
 	std::vector<Mesh> mMeshes;
 	std::vector<Animation*> mAnimations;
@@ -66,7 +66,7 @@ public:
 	void ReleaseResources( RenderContext* context );
 
 
-	void SetRoot( const Math::Matrix& root );
+	void SetRoot( const aiVector3D& translation, const aiQuaternion& rotation );
 	void PlayAnimation( unsigned int animationIndex, float playbackSpeed = 0.f );
 	void PauseAnimation();
 	void ToggleAnimationPlayback();

@@ -15,7 +15,7 @@ Model::Model( const std::string& fileName )
 	, mCurrentAnimation( NULL )
 	, mShaderTest( 0 )
 {
-	mPoseBuffer.resize( Skeleton::MAX_BONES_PER_MESH );
+	mPoseBuffer.resize( mSkeleton.MAX_BONE_COUNT );
 }
 
 
@@ -24,13 +24,9 @@ Model::~Model(void)
 	mMeshes.clear();
 }
 
-void Model::SetRoot( const Math::Matrix& root )
+void Model::SetRoot( const aiVector3D& translation, const aiQuaternion& rotation )
 {
-	aiMatrix4x4 m;
-	memcpy( &m[0][0], root.data, sizeof(Math::Matrix) );
-	m.Transpose();
-
-	mSkeleton.setLocalTransform( 0, m );
+	mSkeleton.SetLocalTransform( 0, translation, rotation, aiVector3D(1.f,1.f,1.f) );
 }
 
 void Model::AcquireResources( RenderContext* context )
@@ -67,7 +63,7 @@ void Model::AcquireResources( RenderContext* context )
 		// load shaders
 		{
 			char maxBoneCount[8];
-			sprintf_s( maxBoneCount, sizeof(maxBoneCount), "%d", Skeleton::MAX_BONES_PER_MESH );
+			sprintf_s( maxBoneCount, sizeof(maxBoneCount), "%d", mSkeleton.MAX_BONE_COUNT );
 			D3DXMACRO macros[] = { { "MAX_BONES_PER_MESH", maxBoneCount }, NULL };
 
 			LPD3DXBUFFER buf;			
@@ -243,7 +239,7 @@ void Model::Render( RenderContext* context )
 		D3DXVECTOR4 lightDirection = Math::Vector( 0.5, 1, 0 ).Normal();
 		DX_CHECK( mesh.mEffect->SetVector( hLightDirection, &lightDirection ) );
 
-		DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms, mPoseBuffer[0], 12 * mSkeleton.getBoneCount() ) );
+		DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms, mPoseBuffer[0], 12 * mSkeleton.GetBoneCount() ) );
 		DX_CHECK( mesh.mEffect->SetInt( hShaderTest, mShaderTest ) );
 
 		DX_CHECK( mesh.mEffect->SetTexture( hDiffuseMap, mesh.mDiffuseMap ) );
@@ -275,9 +271,9 @@ void Model::Update( float dt )
 		mCurrentAnimation->EvaluatePose( mSkeleton );	
 	}
 
-	for( int i=0; i<mSkeleton.getBoneCount(); ++i )
+	for( int i=0; i<mSkeleton.GetBoneCount(); ++i )
 	{
-		mPoseBuffer[i] = mSkeleton.getWorldTransform( i );
+		mPoseBuffer[i] = mSkeleton.GetWorldTransform( i );
 	}
 
 }

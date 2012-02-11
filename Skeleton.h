@@ -7,30 +7,67 @@ struct aiScene;
 struct aiNode;
 struct aiBone;
 class SkeletonBuilder;
+class PoseBuffer;
 
-class Skeleton
+template< class BoneTransform, int MaxBoneCount >
+class SkeletonGeneric
 {
 	friend class SkeletonBuilder;
 
-public:
-	static const int MAX_BONES_PER_MESH = 62;
-
-private:
 	std::vector<int> mParents;
-	std::vector<Math::Matrix4x3> mTransforms;
-	std::vector<Math::Matrix4x3> mBindingTransforms;
+	std::vector<BoneTransform> mTransforms;
+	std::vector<BoneTransform> mBindingTransforms;
+
+	
+
+	virtual BoneTransform Concatenate( const BoneTransform& first, const BoneTransform& second ) const = 0;
 
 public:
-	Skeleton(void);
-	~Skeleton(void);
+	static const int MAX_BONE_COUNT = MaxBoneCount;
 
-	const std::vector<Math::Matrix4x3>& getLocalTransforms() const;
-	const std::vector<int>& getParents() const;
+	int GetBoneCount() const
+	{
+		return mTransforms.size();
+	}
 
-	Math::Matrix4x3 getWorldTransform( int bone ) const;
-	void setLocalTransform( int bone, const Math::Matrix4x3& transform );
+	const std::vector<BoneTransform>& GetLocalTransforms() const
+	{
+		return mTransforms;
+	}
+
+	void SetLocalTransform( int bone,  const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
+	{
+		mTransforms[bone] = BoneTransform( translation, rotation, scale );	
+	}
+
+
+	const std::vector<int>& GetParents() const
+	{
+		return mParents;
+	}
+
+
+	BoneTransform GetWorldTransform( int bone ) const
+	{
+		BoneTransform result = Concatenate( mBindingTransforms[bone], mTransforms[bone] );
+		int p = mParents[bone];
+
+		while( p >= 0 )
+		{
+			result = Concatenate( result, mTransforms[p] );
+			p = mParents[p];
+		}
 	
-	int getBoneCount() const;
+		return result;
+	}
+};
+
+class Skeleton_MatrixBased : public SkeletonGeneric< Math::Matrix4x3, 62 >
+{
+	Math::Matrix4x3 Concatenate( const Math::Matrix4x3& first, const Math::Matrix4x3& second ) const
+	{
+		return first * second;
+	}
 };
 
 

@@ -90,7 +90,7 @@ namespace Math
 		static Matrix Translation( Vector translation )
 		{
 			Matrix result;
-			D3DXMatrixTranslation( &result.data, -10.0f, 0.0f, 0.0f );
+			D3DXMatrixTranslation( &result.data, translation.GetX(), translation.GetY(), translation.GetZ() );
 			return result;
 
 		}
@@ -124,21 +124,21 @@ namespace Math
 			D3DXMatrixTranspose( &data, &tmp );	
 		}
 
-		Matrix operator*( const Matrix& right )
+		Matrix operator*( const Matrix& right ) const
 		{
 			Matrix result;
 			D3DXMatrixMultiply( &result.data, &data, &right.data );
 			return result;
 		}
 
-		Vector Transform( const Vector& v )
+		Vector Transform( const Vector& v ) const
 		{
 			D3DXVECTOR4 t;
 			D3DXVec3Transform( &t, &v.data, &data );
 			return Vector(t.x, t.y, t.z);
 		}
 
-		Vector TransformNormal( const Vector& n )
+		Vector TransformNormal( const Vector& n ) const
 		{
 			Vector result;
 			D3DXVec3TransformNormal( &result.data, &n.data, &data );
@@ -175,12 +175,13 @@ namespace Math
 			memcpy( data[3], &tmp.d1, sizeof(data[3] ) );
 		}
 
-		Matrix4x3( const aiMatrix3x3& rotation, const aiVector3D& translation )
+		Matrix4x3( const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
 		{
-			data[0][0] = rotation[0][0];	data[0][1] = rotation[1][0];	data[0][2] = rotation[2][0];
-			data[1][0] = rotation[0][1];	data[1][1] = rotation[1][1];	data[1][2] = rotation[2][1];
-			data[2][0] = rotation[0][2];	data[2][1] = rotation[1][2];	data[2][2] = rotation[2][2];
-			data[3][0] = translation.x;		data[3][1] = translation.y;		data[3][2] = translation.z;
+			aiMatrix3x3 r = rotation.GetMatrix();
+			data[0][0] = r[0][0] * scale.x;		data[0][1] = r[1][0];				data[0][2] = r[2][0];
+			data[1][0] = r[0][1];				data[1][1] = r[1][1] * scale.y;		data[1][2] = r[2][1];
+			data[2][0] = r[0][2];				data[2][1] = r[1][2];				data[2][2] = r[2][2] * scale.z;
+			data[3][0] = translation.x;			data[3][1] = translation.y;			data[3][2] = translation.z;
 		}
 
 		Matrix4x3 operator*( const Matrix4x3& right ) const
@@ -207,6 +208,49 @@ namespace Math
 		}
 
 	
+	};
+
+	struct DualQuaternion
+	{
+		D3DXQUATERNION real;
+		D3DXQUATERNION dual;
+
+		DualQuaternion()
+			: real( 0, 0, 0, 1 )
+			, dual( 0, 0, 0, 0 ) 
+		{}
+
+		DualQuaternion( const D3DXQUATERNION& realPart, const D3DXQUATERNION& dualPart )
+			: real( realPart )
+			, dual( dualPart )
+		{}
+		
+		DualQuaternion( const aiQuaternion& rotation, const aiVector3D translation )
+		{
+			real = D3DXQUATERNION( rotation.x, rotation.y, rotation.z, rotation.w );
+
+			D3DXQUATERNION t( 0.5f * translation.x, 0.5f * translation.y, 0.5f * translation.z, 0 );
+			dual = t * real;
+		}
+
+		DualQuaternion operator*( const DualQuaternion& right ) const
+		{
+			  return DualQuaternion( real * right.real, real * right.dual + right.real * dual);
+		}
+
+		Vector operator*( const Vector& point ) const
+		{
+			const Vector realV( real.x, real.y, real.z );
+			const float realS = real.w;
+
+			const Vector dualV( dual.x, dual.y, dual.z );
+			const float dualS = dual.w;
+
+			Vector rTr = point + realV.Cross( realV.Cross( point ) + point.Scale( realS ) ).Scale( 2.f );
+			Vector t = (dualV.Scale( realS ) - realV.Scale( dualS ) + realV.Cross( dualV ) ).Scale( 2.f );
+
+			return rTr + t;
+		}
 	};
 
 	struct mayaMatrix

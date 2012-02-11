@@ -21,6 +21,7 @@
     <ClCompile Include="math.cpp" />
     <ClCompile Include="MeshBuilder.cpp" />
     <ClCompile Include="Model.cpp" />
+    <ClCompile Include="PoseBuffer.cpp" />
     <ClCompile Include="RenderContext.cpp" />
     <ClCompile Include="Skeleton.cpp" />
     <ClCompile Include="SkeletonBuilder.cpp" />
@@ -41,6 +42,7 @@
     <ClInclude Include="math.h" />
     <ClInclude Include="MeshBuilder.h" />
     <ClInclude Include="Model.h" />
+    <ClInclude Include="PoseBuffer.h" />
     <ClInclude Include="RenderContext.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Skeleton.h" />
