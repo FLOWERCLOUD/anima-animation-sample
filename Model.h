@@ -10,9 +10,18 @@ class SkeletonBuilder;
 class MeshBuilder;
 struct aiScene;
 
-class Model : public DisplayList::Node
+class SkeletalModel : public DisplayList::Node
 {
 	friend class MeshBuilder;
+
+	enum SkeletalAnimationMethod
+	{
+		SAM_LINEAR_BLEND_SKINNING,
+		SAM_DUAL_QUATERNION,
+
+		SAM_COUNT,
+	};
+
 
 	struct MeshData
 	{
@@ -42,11 +51,12 @@ class Model : public DisplayList::Node
 		MeshData Data;
 
 		Mesh() : mVertexBuffer(NULL), mVertexDeclaration(NULL), mIndexBuffer(NULL), mEffect(NULL) {}
-		
+
 	};
 
-	Skeleton_MatrixBased mSkeleton;
-	std::vector<Math::Matrix4x3> mPoseBuffer;
+	SkeletonInterface* mSkeletons[SAM_COUNT];
+	PoseBufferInterface* mPoseBuffers[SAM_COUNT];
+
 	std::vector<Mesh> mMeshes;
 	std::vector<Animation*> mAnimations;
 
@@ -54,12 +64,13 @@ class Model : public DisplayList::Node
 	int mAnimationPaused;
 
 	int mShaderTest;
+	SkeletalAnimationMethod mCurrentAnimationMethod;
 
 	int CreateDataConverters( aiMesh* mesh, SkeletonBuilder* skeletonBuilder, std::vector<DataConverter*>& result );
 
 public:
-	Model( const std::string& fileName );
-	~Model(void);
+	SkeletalModel( const std::string& fileName );
+	~SkeletalModel(void);
 
 	bool Load( RenderContext* context );
 	void AcquireResources( RenderContext* context );

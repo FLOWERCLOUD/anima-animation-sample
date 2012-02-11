@@ -225,7 +225,7 @@ namespace Math
 			, dual( dualPart )
 		{}
 		
-		DualQuaternion( const aiQuaternion& rotation, const aiVector3D translation )
+		DualQuaternion( const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
 		{
 			real = D3DXQUATERNION( rotation.x, rotation.y, rotation.z, rotation.w );
 

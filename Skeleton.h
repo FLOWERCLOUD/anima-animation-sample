@@ -2,15 +2,24 @@
 
 #include "stdafx.h" 
 #include "math.h"
+#include "PoseBuffer.h"
 
 struct aiScene;
 struct aiNode;
 struct aiBone;
 class SkeletonBuilder;
-class PoseBuffer;
+
+class SkeletonInterface
+{
+public:
+	virtual int GetBoneCount() const = 0;
+	virtual int GetMaxBoneCount() const = 0;
+	virtual void SetLocalTransform( int bone,  const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale ) = 0;
+	virtual void GetWorldTransform( int bone, PoseBufferInterface& poseBuffer ) const = 0;
+};
 
 template< class BoneTransform, int MaxBoneCount >
-class SkeletonGeneric
+class SkeletonGeneric : public SkeletonInterface
 {
 	friend class SkeletonBuilder;
 
@@ -18,14 +27,21 @@ class SkeletonGeneric
 	std::vector<BoneTransform> mTransforms;
 	std::vector<BoneTransform> mBindingTransforms;
 
-	
-
-	virtual BoneTransform Concatenate( const BoneTransform& first, const BoneTransform& second ) const = 0;
+	virtual BoneTransform Concatenate( const BoneTransform& first, const BoneTransform& second ) const
+	{
+		return first * second;
+	}
 
 public:
+	typedef BoneTransform BoneTransformType;
 	static const int MAX_BONE_COUNT = MaxBoneCount;
 
-	int GetBoneCount() const
+	virtual int GetMaxBoneCount() const
+	{
+		return MaxBoneCount;
+	}
+
+	virtual int GetBoneCount() const
 	{
 		return mTransforms.size();
 	}
@@ -35,7 +51,7 @@ public:
 		return mTransforms;
 	}
 
-	void SetLocalTransform( int bone,  const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
+	virtual void SetLocalTransform( int bone,  const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
 	{
 		mTransforms[bone] = BoneTransform( translation, rotation, scale );	
 	}
@@ -45,9 +61,7 @@ public:
 	{
 		return mParents;
 	}
-
-
-	BoneTransform GetWorldTransform( int bone ) const
+	void GetWorldTransform( int bone, PoseBufferInterface& poseBuffer ) const
 	{
 		BoneTransform result = Concatenate( mBindingTransforms[bone], mTransforms[bone] );
 		int p = mParents[bone];
@@ -58,17 +72,11 @@ public:
 			p = mParents[p];
 		}
 	
-		return result;
+		memcpy( poseBuffer[bone], &result, sizeof(BoneTransform) );
 	}
 };
 
-class Skeleton_MatrixBased : public SkeletonGeneric< Math::Matrix4x3, 62 >
-{
-	Math::Matrix4x3 Concatenate( const Math::Matrix4x3& first, const Math::Matrix4x3& second ) const
-	{
-		return first * second;
-	}
-};
-
+typedef SkeletonGeneric< Math::Matrix4x3, 62 > Skeleton_Matrix43;
+typedef SkeletonGeneric< Math::DualQuaternion, 62 > Skeleton_DualQuaternion;
 
 

@@ -160,7 +160,7 @@ HRESULT AnimaApplication::CreateInstance( HINSTANCE hInstance, HINSTANCE hPrevIn
 	Instance()->mCamera = new Camera( *Instance()->mInput, *Instance()->mRenderContext );
 	// set up renderer 
 
-	Instance()->mModel = new Model( "..\\Models\\frank.dae" );
+	Instance()->mModel = new SkeletalModel( "..\\Models\\frank.dae" );
 	Instance()->mModel->Load( Instance()->mRenderContext );
 	Instance()->mModel->SetNext( Instance()->mUserInterface );
 	Instance()->mModel->PlayAnimation( 0, 0.25f );

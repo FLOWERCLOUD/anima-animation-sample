@@ -10,7 +10,7 @@ class CubeRendererInterface;
 class UserInterface;
 class Camera;
 class Input;
-class Model;
+class SkeletalModel;
 
 /*	The main application class (Singleton)
 		Owns instances of all other classes, creates the application window and handles keyboad input				*/
@@ -25,7 +25,7 @@ class AnimaApplication
 	TestEnvironment* mTestEnvironment;
 	Camera* mCamera;
 	Input* mInput;
-	Model* mModel;
+	SkeletalModel* mModel;
 
 	WNDCLASSEX mWindowClass;
 	HWND mWindowHandle;

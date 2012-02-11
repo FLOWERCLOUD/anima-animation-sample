@@ -7,29 +7,36 @@
 #include "MeshBuilder.h"
 #include "Skeleton.h"
 #include "Debug.h"
+#include "PoseBuffer.h"
 
 using namespace std;
-Model::Model( const std::string& fileName )
+SkeletalModel::SkeletalModel( const std::string& fileName )
 	: mFileName( fileName )
 	, mIsLoaded( false )
 	, mCurrentAnimation( NULL )
 	, mShaderTest( 0 )
+	, mCurrentAnimationMethod( SAM_LINEAR_BLEND_SKINNING )
 {
-	mPoseBuffer.resize( mSkeleton.MAX_BONE_COUNT );
+	mSkeletons[SAM_LINEAR_BLEND_SKINNING] = new Skeleton_Matrix43();
+	mPoseBuffers[SAM_LINEAR_BLEND_SKINNING] = new PoseBufferGeneric<Skeleton_Matrix43>();
+
+	mSkeletons[SAM_DUAL_QUATERNION] = new Skeleton_DualQuaternion();
+	mPoseBuffers[SAM_DUAL_QUATERNION] = new PoseBufferGeneric<Skeleton_DualQuaternion>();
+
 }
 
 
-Model::~Model(void)
+SkeletalModel::~SkeletalModel(void)
 {
 	mMeshes.clear();
 }
 
-void Model::SetRoot( const aiVector3D& translation, const aiQuaternion& rotation )
+void SkeletalModel::SetRoot( const aiVector3D& translation, const aiQuaternion& rotation )
 {
-	mSkeleton.SetLocalTransform( 0, translation, rotation, aiVector3D(1.f,1.f,1.f) );
+	mSkeletons[mCurrentAnimationMethod]->SetLocalTransform( 0, translation, rotation, aiVector3D(1.f,1.f,1.f) );
 }
 
-void Model::AcquireResources( RenderContext* context )
+void SkeletalModel::AcquireResources( RenderContext* context )
 {
 	for( unsigned int m=0; m<mMeshes.size(); ++m )
 	{
@@ -62,9 +69,16 @@ void Model::AcquireResources( RenderContext* context )
 
 		// load shaders
 		{
-			char maxBoneCount[8];
-			sprintf_s( maxBoneCount, sizeof(maxBoneCount), "%d", mSkeleton.MAX_BONE_COUNT );
-			D3DXMACRO macros[] = { { "MAX_BONES_PER_MESH", maxBoneCount }, NULL };
+
+			char maxBoneCountLBS[8], maxBoneCountDQ[8];
+			sprintf_s( maxBoneCountLBS, sizeof(maxBoneCountLBS), "%d", mSkeletons[SAM_LINEAR_BLEND_SKINNING]->GetMaxBoneCount() );
+			sprintf_s( maxBoneCountLBS, sizeof(maxBoneCountDQ), "%d", mSkeletons[SAM_DUAL_QUATERNION]->GetMaxBoneCount() );
+			D3DXMACRO macros[] =
+			{ 
+				{ "MAX_BONES_PER_MESH_LBS", maxBoneCountLBS }, 
+				{ "MAX_BONES_PER_MESH_DQ", maxBoneCountDQ },
+				NULL 
+			};
 
 			LPD3DXBUFFER buf;			
 			HRESULT hr = D3DXCreateEffectFromFile( context->Device(), "../Shaders/Model.fx", macros, NULL, NULL, NULL, &mesh.mEffect, &buf );
@@ -85,8 +99,14 @@ void Model::AcquireResources( RenderContext* context )
 	}
 }
 
-void Model::ReleaseResources( RenderContext* context )
+void SkeletalModel::ReleaseResources( RenderContext* context )
 {
+	for( unsigned int m=0; m<SAM_COUNT; ++m )
+	{
+		delete mSkeletons[m];
+		delete mPoseBuffers[m];
+	}
+
 	for( unsigned int m=0; m<mMeshes.size(); ++m )
 	{
 		Mesh& mesh = mMeshes[m];
@@ -129,7 +149,7 @@ void Model::ReleaseResources( RenderContext* context )
 	}
 }
 
-bool Model::Load( RenderContext* context )
+bool SkeletalModel::Load( RenderContext* context )
 {
 	// Create an instance of the Importer class
 	Assimp::Importer modelImporter;
@@ -171,7 +191,11 @@ bool Model::Load( RenderContext* context )
 		AnimationBuilder animationBuilder( scene, skeletonBuilder );
 		MeshBuilder meshBuilder( scene, skeletonBuilder );
 
-		skeletonBuilder.BuildSkeleton( mSkeleton );
+		// build all skeletons
+		skeletonBuilder.BuildSkeleton( dynamic_cast<Skeleton_Matrix43*>( mSkeletons[SAM_LINEAR_BLEND_SKINNING] ) );
+		skeletonBuilder.BuildSkeleton( dynamic_cast<Skeleton_DualQuaternion*>( mSkeletons[SAM_DUAL_QUATERNION] ) );
+		
+
 		animationBuilder.BuildAnimations( mAnimations );
 		meshBuilder.BuildMeshes( mMeshes );
 	}
@@ -183,7 +207,7 @@ bool Model::Load( RenderContext* context )
 
 }
 
-void Model::PlayAnimation( unsigned int animationIndex, float playbackSpeed )
+void SkeletalModel::PlayAnimation( unsigned int animationIndex, float playbackSpeed )
 {
 	if( animationIndex >= 0 && animationIndex < mAnimations.size() )
 	{
@@ -193,24 +217,24 @@ void Model::PlayAnimation( unsigned int animationIndex, float playbackSpeed )
 	}
 }
 
-void Model::PauseAnimation()
+void SkeletalModel::PauseAnimation()
 {
 	mAnimationPaused = true;
 }
 
-void Model::ToggleAnimationPlayback()
+void SkeletalModel::ToggleAnimationPlayback()
 {
 	mAnimationPaused = !mAnimationPaused;
 }
 
-void Model::ToggleShaderTest()
+void SkeletalModel::ToggleShaderTest()
 {
 	mShaderTest = mShaderTest==0 ? 1 : 0;
 }
 
 
 
-void Model::Render( RenderContext* context )
+void SkeletalModel::Render( RenderContext* context )
 {
 	context->Device()->SetRenderState( D3DRS_ALPHABLENDENABLE, FALSE );
 	context->Device()->SetRenderState( D3DRS_ZWRITEENABLE, D3DZB_TRUE);
@@ -239,7 +263,12 @@ void Model::Render( RenderContext* context )
 		D3DXVECTOR4 lightDirection = Math::Vector( 0.5, 1, 0 ).Normal();
 		DX_CHECK( mesh.mEffect->SetVector( hLightDirection, &lightDirection ) );
 
-		DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms, mPoseBuffer[0], 12 * mSkeleton.GetBoneCount() ) );
+		{
+			PoseBufferInterface& poseBuffer = *mPoseBuffers[mCurrentAnimationMethod];
+			const float* poseData =  reinterpret_cast<const float*>( poseBuffer[0] );
+			DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms, poseData, poseBuffer.Size() / sizeof(float) ) );
+		}
+
 		DX_CHECK( mesh.mEffect->SetInt( hShaderTest, mShaderTest ) );
 
 		DX_CHECK( mesh.mEffect->SetTexture( hDiffuseMap, mesh.mDiffuseMap ) );
@@ -263,17 +292,20 @@ void Model::Render( RenderContext* context )
 	DX_CHECK( context->Device()->SetIndices( NULL ) );
 }
 
-void Model::Update( float dt )
+void SkeletalModel::Update( float dt )
 {
+	SkeletonInterface& skeleton = *mSkeletons[mCurrentAnimationMethod];
+	PoseBufferInterface& poseBuffer = *mPoseBuffers[mCurrentAnimationMethod];
+
 	if( mCurrentAnimation && !mAnimationPaused )
 	{
 		mCurrentAnimation->Update( dt );
-		mCurrentAnimation->EvaluatePose( mSkeleton );	
+		mCurrentAnimation->EvaluatePose( skeleton );	
 	}
 
-	for( int i=0; i<mSkeleton.GetBoneCount(); ++i )
+	for( int i=0; i<skeleton.GetBoneCount(); ++i )
 	{
-		mPoseBuffer[i] = mSkeleton.GetWorldTransform( i );
+		skeleton.GetWorldTransform( i, poseBuffer );
 	}
 
 }
