@@ -16,9 +16,10 @@ public:
 	virtual int GetMaxBoneCount() const = 0;
 	virtual void SetLocalTransform( int bone,  const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale ) = 0;
 	virtual void GetWorldTransform( int bone, PoseBufferInterface& poseBuffer ) const = 0;
+	virtual const char* GetShaderTechnique() const = 0;
 };
 
-template< class BoneTransform, int MaxBoneCount >
+template< class BoneTransform >
 class SkeletonGeneric : public SkeletonInterface
 {
 	friend class SkeletonBuilder;
@@ -29,16 +30,20 @@ class SkeletonGeneric : public SkeletonInterface
 
 	virtual BoneTransform Concatenate( const BoneTransform& first, const BoneTransform& second ) const
 	{
-		return first * second;
+		return second * first;
 	}
 
 public:
 	typedef BoneTransform BoneTransformType;
-	static const int MAX_BONE_COUNT = MaxBoneCount;
 
 	virtual int GetMaxBoneCount() const
 	{
-		return MaxBoneCount;
+		return SkeletonTraits<BoneTransform>::MaxBoneCount;
+	}
+
+	virtual const char* GetShaderTechnique() const 
+	{
+		return SkeletonTraits<BoneTransform>::ShaderTechnique;
 	}
 
 	virtual int GetBoneCount() const
@@ -51,6 +56,13 @@ public:
 		return mTransforms;
 	}
 
+	
+	const std::vector<BoneTransform>& GetBindingTransforms() const
+	{
+		return mBindingTransforms;
+	}
+
+
 	virtual void SetLocalTransform( int bone,  const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
 	{
 		mTransforms[bone] = BoneTransform( translation, rotation, scale );	
@@ -61,6 +73,7 @@ public:
 	{
 		return mParents;
 	}
+
 	void GetWorldTransform( int bone, PoseBufferInterface& poseBuffer ) const
 	{
 		BoneTransform result = Concatenate( mBindingTransforms[bone], mTransforms[bone] );
@@ -76,14 +89,23 @@ public:
 	}
 };
 
-
-typedef SkeletonGeneric< Math::DualQuaternion, 62 > Skeleton_DualQuaternion;
-
-class Skeleton_Matrix34 : public SkeletonGeneric< Math::Matrix3x4, 62 >
+template< typename BoneTransform >
+struct SkeletonTraits
 {
-public:
-	virtual Math::Matrix3x4 Concatenate( const Math::Matrix3x4& first, const Math::Matrix3x4& second ) const
-	{
-		return second * first;
-	}
+	static const int MaxBoneCount = 0;
+};
+
+template<>
+struct SkeletonTraits<Math::Matrix3x4>
+{
+	static const int MaxBoneCount = 66;
+	static const char* ShaderTechnique;
+};
+
+template<>
+struct SkeletonTraits<Math::DualQuaternion>
+{
+	static const int MaxBoneCount = 100;
+	static const char* ShaderTechnique;
+
 };

@@ -8,6 +8,7 @@
 UserInterface::UserInterface( RenderContext* context, FramerateCounter* frameCounter )
 	: mFrameCounter( frameCounter )
 	, mRenderStatistics( true )
+	, mSkeletalAnimationMethod( 0 )
 {
 	TextColor = D3DCOLOR_RGBA(255, 255, 255,255 );
 }
@@ -34,9 +35,13 @@ void UserInterface::Render( RenderContext* context )
 		sprintf_s( textBuffer, "Frame time: %.2f ms", avgFPS * 1000.0f );
 		RenderText( textBuffer, rcLine );
 
-		// number of cubes
+		// skeletal animation method
 		rcLine.left += LineWidth;
 		rcLine.right += LineWidth;
+
+		const char* animationMethodNames[] = { "Linear Blend Skinning", "Dual Quaternion Skinning" };
+		sprintf_s( textBuffer, "Skinning Method: %s", animationMethodNames[mSkeletalAnimationMethod] );
+		RenderText( textBuffer, rcLine );
 	}
 }
 

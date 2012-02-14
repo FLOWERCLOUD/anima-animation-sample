@@ -1,13 +1,16 @@
-//#ifndef MAX_FLOAT_VECTORS_PER_MESH
-#define MAX_FLOAT_VECTORS_PER_MESH 60*3
-//#endif
+#ifndef MAX_FLOAT_VECTORS_PER_MESH
+#define MAX_FLOAT_VECTORS_PER_MESH 66*3
+#endif
 
-float4 BoneTransforms[60*3] : BONE_TRANSFORMS : register(c0);
+float4 BoneTransforms[MAX_FLOAT_VECTORS_PER_MESH] : BONE_TRANSFORMS;
 
 float4x4 ViewProjection	: VIEWPROJECTION;
 float4 LightDirection	: LIGHTDIRECTION;
 
 int ShaderTest : SHADER_TEST;
+
+#include "DualQuaternionSkinning.h"
+#include "LinearBlendSkinning.h"
 
 struct VertexShaderInput
 {
@@ -49,36 +52,45 @@ sampler DiffuseSampler = sampler_state
     MipFilter = Linear;
 };
 
-float3x4 GetBoneMatrix( int boneIndex )
-{
-	// return BoneTransforms[boneIndex];
-	
-	return float3x4(
-		BoneTransforms[boneIndex*3 + 0],
-		BoneTransforms[boneIndex*3 + 1],
-		BoneTransforms[boneIndex*3 + 2]
-	);
-	
-}
-
-VertexShaderOutput Model_VS( VertexShaderInput input )
+VertexShaderOutput LinearBlendSkinning_VS( VertexShaderInput input )
 {
 	VertexShaderOutput result;
 	result.TexCoord = input.TexCoord; 
 	result.Color = float4( 0.75, 0.75, 0.75, 1 );
 	
-	float3x4 blendedTransform =
-		GetBoneMatrix( input.BlendIndices.x ) * input.BlendWeights.x + 
-		GetBoneMatrix( input.BlendIndices.y ) * input.BlendWeights.y + 
-		GetBoneMatrix( input.BlendIndices.z ) * input.BlendWeights.z + 
-		GetBoneMatrix( input.BlendIndices.w ) * input.BlendWeights.w;
+	// get blended matrix
+	float3x4 blendedTransform = GetBlendedMatrix( input.BlendIndices, input.BlendWeights );
 
+	// transform tangent space vectors into world space
 	result.Normal = mul( blendedTransform, float4( input.Normal, 0 ) );
 	result.Tangent = mul( blendedTransform, float4( input.Tangent, 0 ) );
 	result.Binormal = mul( blendedTransform, float4( input.Binormal, 0 ) );
 
+	// transform position into clip space
 	float3 blendedPosition = mul( blendedTransform, float4( input.Position.xyz, 1 ) );
 	result.Position =  mul( float4( blendedPosition.xyz, 1), ViewProjection );
+
+	return result;
+}
+
+
+VertexShaderOutput DualQuaternionSkinning_VS( VertexShaderInput input )
+{
+	VertexShaderOutput result;
+	result.TexCoord = input.TexCoord; 
+	result.Color = float4( 0.75, 0.75, 0.75, 1 );
+	
+	// blend bone DQs
+	float2x4 blendedDQ = GetBlendedDualQuaternion( input.BlendIndices, input.BlendWeights );
+
+	// transform position into clip space
+	float3 blendedPosition = transformPositionDQ( input.Position.xyz, blendedDQ[0], blendedDQ[1] );
+	result.Position =  mul( float4( blendedPosition.xyz, 1), ViewProjection );
+
+	// transform tangent space vectors into world space
+	result.Normal = transformNormalDQ( input.Normal, blendedDQ[0], blendedDQ[1] );
+	result.Tangent = transformNormalDQ( input.Tangent, blendedDQ[0], blendedDQ[1] );
+	result.Binormal = transformNormalDQ( input.Binormal, blendedDQ[0], blendedDQ[1] );
 
 	return result;
 }
@@ -102,11 +114,20 @@ float4 Model_PS( VertexShaderOutput input ) : COLOR0
 	return textureColor * (ambient + diffuse);
 }
 
-technique Model
+technique LinearBlendSkinning
 {
     pass P0
     {
-        VertexShader = compile vs_3_0 Model_VS();
+        VertexShader = compile vs_3_0 LinearBlendSkinning_VS();
+        PixelShader  = compile ps_3_0 Model_PS();
+    }
+}
+
+technique DualQuaternionSkinning
+{
+    pass P0
+    {
+        VertexShader = compile vs_3_0 DualQuaternionSkinning_VS();
         PixelShader  = compile ps_3_0 Model_PS();
     }
 }

@@ -35,6 +35,7 @@ class AnimaApplication
 	static AnimaApplication* mInstance;
 
 	float mModelRotation;
+	bool mRotateModel;
 
 	class DeltaTime 
 	{

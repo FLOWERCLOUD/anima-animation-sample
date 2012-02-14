@@ -61,7 +61,7 @@ class SkeletalModel : public DisplayList::Node
 	std::vector<Animation*> mAnimations;
 
 	Animation* mCurrentAnimation;
-	int mAnimationPaused;
+	bool mAnimationPaused;
 
 	int mShaderTest;
 	SkeletalAnimationMethod mCurrentAnimationMethod;
@@ -80,10 +80,10 @@ public:
 	void SetRoot( const aiVector3D& translation, const aiQuaternion& rotation );
 	void PlayAnimation( unsigned int animationIndex, float playbackSpeed = 0.f );
 	void PauseAnimation();
-	void ToggleAnimationPlayback();
+	bool ToggleAnimationPlayback();
 	
 	void ToggleShaderTest();
-
+	int ToggleAnimationMethod();
 
 	void Render( RenderContext* context );
 	void Update( float dt );

@@ -131,6 +131,20 @@ namespace Math
 			return result;
 		}
 
+		Matrix Inverse() const
+		{
+			Matrix result;
+			D3DXMatrixInverse( &result.data, NULL, &data );
+			return result;
+		}
+
+		Matrix Transpose() const
+		{
+			Matrix result;
+			D3DXMatrixTranspose( &result.data, &data );
+			return result;
+		}
+
 		Vector Transform( const Vector& v ) const
 		{
 			D3DXVECTOR4 t;
@@ -205,51 +219,133 @@ namespace Math
 
 		}
 
+		void Print() const
+		{
+			const float* values = &data[0][0];
+			for( int i=0; i<12; ++i )
+				DebugPrint( "%.6f ", values[i] );
+			DebugPrint( "\n" );
+		}
+
 	
+	};
+
+	struct Quaternion
+	{
+		D3DXQUATERNION data; // rx, ry, rz, s
+
+		Quaternion() : data(0,0,0,1) {}
+		Quaternion( float x, float y, float z, float w ) : data( x, y, z, w ) {}
+		Quaternion( const D3DXQUATERNION& other ) : data( other ) {}
+		Quaternion( const Quaternion& other ) : data( other.data ) {}
+
+		Quaternion operator*( const Quaternion& right ) const
+		{
+			const float a1 = data.w, b1 = data.x, c1 = data.y, d1 = data.z;
+			const float a2 = right.data.w, b2 = right.data.x, c2 = right.data.y, d2 = right.data.z;
+		   
+			return Quaternion(
+				a1*b2 + b1*a2 + c1*d2 - d1*c2,
+				a1*c2 - b1*d2 + c1*a2 + d1*b2,
+				a1*d2 + b1*c2 - c1*b2 + d1*a2,
+				a1*a2 - b1*b2 - c1*c2 - d1*d2
+			);
+		}
+
+		Quaternion operator*( float factor ) const
+		{
+			return  Quaternion( data.x * factor, data.y * factor, data.z * factor, data.w * factor );
+		}
+
+		Quaternion operator+( const Quaternion& other )
+		{
+			return Quaternion( data.x + other.data.x, data.y + other.data.y, data.z + other.data.z, data.w + other.data.w );
+		}
+
+		Quaternion operator-( const Quaternion& other )
+		{
+			return Quaternion( data.x - other.data.x, data.y - other.data.y, data.z - other.data.z, data.w - other.data.w );
+		}
+
+		float Dot( const Quaternion& other ) const
+		{
+			return data.x*other.data.x + data.y*other.data.y + data.z*other.data.z + data.w*other.data.w;
+		}
+
+		Quaternion Normalize() const
+		{
+			const float norm = Norm();
+			const float d = norm > 0 ? norm : 1.0f;
+
+			return Quaternion( data.x / d, data.y / d, data.z / d, data.w / d );
+		}
+
+		float Norm() const
+		{
+			return sqrt( Dot( *this ) );
+		}
 	};
 
 	struct DualQuaternion
 	{
-		D3DXQUATERNION real;
-		D3DXQUATERNION dual;
+		Quaternion real;
+		Quaternion dual;
 
 		DualQuaternion()
 			: real( 0, 0, 0, 1 )
 			, dual( 0, 0, 0, 0 ) 
 		{}
 
-		DualQuaternion( const D3DXQUATERNION& realPart, const D3DXQUATERNION& dualPart )
+		DualQuaternion( const Quaternion& realPart, const Quaternion& dualPart )
 			: real( realPart )
 			, dual( dualPart )
 		{}
 
 		
-		
 		DualQuaternion( const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
 		{
-			real = D3DXQUATERNION( rotation.x, rotation.y, rotation.z, rotation.w );
-
-			D3DXQUATERNION t( 0.5f * translation.x, 0.5f * translation.y, 0.5f * translation.z, 0 );
-			dual = t * real;
+			real = Quaternion( rotation.x, rotation.y, rotation.z, rotation.w );
+			dual = Quaternion(
+				 0.5f*( translation.x*rotation.w + translation.y*rotation.z - translation.z*rotation.y),
+				 0.5f*(-translation.x*rotation.z + translation.y*rotation.w + translation.z*rotation.x),
+				 0.5f*( translation.x*rotation.y - translation.y*rotation.x + translation.z*rotation.w),
+				-0.5f*( translation.x*rotation.x + translation.y*rotation.y + translation.z*rotation.z)
+			);
 		}
 
 		DualQuaternion operator*( const DualQuaternion& right ) const
 		{
-			  return DualQuaternion( real * right.real, real * right.dual + right.real * dual);
+			return DualQuaternion( real * right.real, real * right.dual + dual * right.real );
 		}
 
-		Vector operator*( const Vector& point ) const
+		void Normalize() 
 		{
-			const Vector realV( real.x, real.y, real.z );
-			const float realS = real.w;
+			float realNorm = real.Norm();
+			if( realNorm > 0 )
+			{
+				Quaternion realN = real * (1.f / realNorm);
+				Quaternion dualN = dual * (1.f / realNorm);
 
-			const Vector dualV( dual.x, dual.y, dual.z );
-			const float dualS = dual.w;
+				real = realN;
+				dual = dualN - realN * realN.Dot( dualN );
+			}
+		}
 
-			Vector rTr = point + realV.Cross( realV.Cross( point ) + point.Scale( realS ) ).Scale( 2.f );
-			Vector t = (dualV.Scale( realS ) - realV.Scale( dualS ) + realV.Cross( dualV ) ).Scale( 2.f );
+		operator Matrix3x4() const
+		{
+			const float rx = real.data.x, ry = real.data.y, rz = real.data.z, rw = real.data.w;
+			const float tx = dual.data.x, ty = dual.data.y, tz = dual.data.z, tw = dual.data.w;
 
-			return rTr + t;
+			Matrix3x4 result;
+			result.data[0][0] = rw*rw + rx*rx - ry*ry - rz*rz;		result.data[0][1] = 2.f*(rx*ry - rw*rz);			result.data[0][2] = 2*(rx*rz + rw*ry);
+			result.data[1][0] = 2*(rx*ry + rw*rz);					result.data[1][1] = rw*rw - rx*rx + ry*ry - rz*rz;	result.data[1][2] = 2*(ry*rz - rw*rx);
+			result.data[2][0] = 2*(rx*rz - rw*ry);					result.data[2][1] = 2*(ry*rz + rw*rx);				result.data[2][2] = rw*rw - rx*rx - ry*ry + rz*rz;
+
+			result.data[0][3] = -2*tw*rx + 2*rw*tx - 2*ty*rz + 2*ry*tz;
+			result.data[1][3] = -2*tw*ry + 2*tx*rz - 2*rx*tz + 2*rw*ty;
+			result.data[2][3] = -2*tw*rz + 2*rx*ty + 2*rw*tz - 2*tx*ry;
+
+			return result;
 		}
 	};
 

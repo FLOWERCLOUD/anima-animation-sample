@@ -10,6 +10,7 @@ class FramerateCounter;
 /* Simple class for managing the 'user interface'. Basically just renders some statistics to the screen	*/
 class UserInterface : public DisplayList::Node
 {
+	int mSkeletalAnimationMethod;
 	FramerateCounter* mFrameCounter;
 	LPD3DXFONT mFont;
 
@@ -35,6 +36,7 @@ public:
 	void ReleaseResources( RenderContext* context );
 	void AcquireResources( RenderContext* context );
 	void ToggleStatistics() { mRenderStatistics = !mRenderStatistics; }
+	void SetSkeletalAnimationMethod( int methodIndex ) { mSkeletalAnimationMethod = methodIndex; }
 
 };
 

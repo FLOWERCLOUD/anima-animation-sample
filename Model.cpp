@@ -17,12 +17,11 @@ SkeletalModel::SkeletalModel( const std::string& fileName )
 	, mShaderTest( 0 )
 	, mCurrentAnimationMethod( SAM_LINEAR_BLEND_SKINNING )
 {
-	mSkeletons[SAM_LINEAR_BLEND_SKINNING] = new Skeleton_Matrix34();
-	mPoseBuffers[SAM_LINEAR_BLEND_SKINNING] = new PoseBufferGeneric<Skeleton_Matrix34>();
+	mSkeletons[SAM_LINEAR_BLEND_SKINNING] = new SkeletonGeneric<Math::Matrix3x4>();
+	mPoseBuffers[SAM_LINEAR_BLEND_SKINNING] = new PoseBufferGeneric<Math::Matrix3x4>();
 
-	mSkeletons[SAM_DUAL_QUATERNION] = new Skeleton_DualQuaternion();
-	mPoseBuffers[SAM_DUAL_QUATERNION] = new PoseBufferGeneric<Skeleton_DualQuaternion>();
-
+	mSkeletons[SAM_DUAL_QUATERNION] = new SkeletonGeneric<Math::DualQuaternion>();
+	mPoseBuffers[SAM_DUAL_QUATERNION] = new PoseBufferGeneric<Math::DualQuaternion>();
 }
 
 
@@ -69,8 +68,8 @@ void SkeletalModel::AcquireResources( RenderContext* context )
 
 		// load shaders
 		{
-			int maxFloats = 0;
-			for( int m=0; m<SAM_COUNT; ++m )
+			unsigned int maxFloats = 0;
+			for( unsigned int m=0; m<SAM_COUNT; ++m )
 				maxFloats = max( maxFloats, mPoseBuffers[m]->Size() / sizeof(float) );
 
 			char maxFloats4s[8];
@@ -170,18 +169,6 @@ bool SkeletalModel::Load( RenderContext* context )
 		return false;
 	}
 
-	/*
-	for( int m=0; m<scene->mNumMaterials; ++m )
-	{
-		aiMaterial* mat = scene->mMaterials[m];
-		for( int p=0; p<mat->mNumProperties; ++p )
-		{
-			aiMaterialProperty* prop = mat->mProperties[p];
-			DebugPrint( "%s\n", prop->mKey.data );
-		}
-	}
-	*/
-
 	// import skeleton, animation and mesh data
 	{
 		SkeletonBuilder skeletonBuilder( scene );
@@ -189,9 +176,8 @@ bool SkeletalModel::Load( RenderContext* context )
 		MeshBuilder meshBuilder( scene, skeletonBuilder );
 
 		// build all skeletons
-		skeletonBuilder.BuildSkeleton( dynamic_cast<Skeleton_Matrix34*>( mSkeletons[SAM_LINEAR_BLEND_SKINNING] ) );
-		skeletonBuilder.BuildSkeleton( dynamic_cast<Skeleton_DualQuaternion*>( mSkeletons[SAM_DUAL_QUATERNION] ) );
-		
+		skeletonBuilder.BuildSkeleton<Math::Matrix3x4>(	mSkeletons[SAM_LINEAR_BLEND_SKINNING], mPoseBuffers[SAM_LINEAR_BLEND_SKINNING] );
+		skeletonBuilder.BuildSkeleton<Math::DualQuaternion>( mSkeletons[SAM_DUAL_QUATERNION], mPoseBuffers[SAM_DUAL_QUATERNION] );
 
 		animationBuilder.BuildAnimations( mAnimations );
 		meshBuilder.BuildMeshes( mMeshes );
@@ -219,9 +205,10 @@ void SkeletalModel::PauseAnimation()
 	mAnimationPaused = true;
 }
 
-void SkeletalModel::ToggleAnimationPlayback()
+bool SkeletalModel::ToggleAnimationPlayback()
 {
 	mAnimationPaused = !mAnimationPaused;
+	return !mAnimationPaused;
 }
 
 void SkeletalModel::ToggleShaderTest()
@@ -229,7 +216,22 @@ void SkeletalModel::ToggleShaderTest()
 	mShaderTest = mShaderTest==0 ? 1 : 0;
 }
 
+int SkeletalModel::ToggleAnimationMethod()
+{
+	mCurrentAnimationMethod = static_cast<SkeletalAnimationMethod>( (mCurrentAnimationMethod+1) % SAM_COUNT );
 
+	// update pose of selected skeleton
+	{
+		SkeletonInterface* skeleton = mSkeletons[mCurrentAnimationMethod];
+		PoseBufferInterface* poseBuffer = mPoseBuffers[mCurrentAnimationMethod];
+		mCurrentAnimation->EvaluatePose( *skeleton );
+		for( int i=0; i<skeleton->GetBoneCount(); ++i )
+		{
+			skeleton->GetWorldTransform( i, *poseBuffer );
+		}
+	}
+	return mCurrentAnimationMethod;
+}
 
 void SkeletalModel::Render( RenderContext* context )
 {
@@ -240,9 +242,9 @@ void SkeletalModel::Render( RenderContext* context )
 	for( unsigned int m=0; m<mMeshes.size(); ++m )
 	{
 		const Mesh& mesh = mMeshes[m];
-		D3DXHANDLE hTechnique = mesh.mEffect->GetTechniqueByName( "Model" );
+		D3DXHANDLE hTechnique = mesh.mEffect->GetTechniqueByName( mSkeletons[mCurrentAnimationMethod]->GetShaderTechnique() );
 		D3DXHANDLE hViewProjection = mesh.mEffect->GetParameterBySemantic( NULL, "VIEWPROJECTION" );
-
+		
 		D3DXHANDLE hLightDirection = mesh.mEffect->GetParameterBySemantic( NULL, "LIGHTDIRECTION" );
 		D3DXHANDLE hBoneTransforms = mesh.mEffect->GetParameterBySemantic( NULL, "BONE_TRANSFORMS" );
 		D3DXHANDLE hShaderTest = mesh.mEffect->GetParameterBySemantic( NULL, "SHADER_TEST" );
@@ -264,7 +266,6 @@ void SkeletalModel::Render( RenderContext* context )
 			PoseBufferInterface& poseBuffer = *mPoseBuffers[mCurrentAnimationMethod];
 			const float* poseData =  reinterpret_cast<const float*>( poseBuffer[0] );
 			DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms, poseData, poseBuffer.Size() / sizeof(float) ) );
-		//	DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms2, poseData, poseBuffer.Size() / sizeof(float) ) );
 		}
 
 		DX_CHECK( mesh.mEffect->SetInt( hShaderTest, mShaderTest ) );
@@ -298,13 +299,12 @@ void SkeletalModel::Update( float dt )
 	if( mCurrentAnimation && !mAnimationPaused )
 	{
 		mCurrentAnimation->Update( dt );
-		mCurrentAnimation->EvaluatePose( skeleton );	
-	}
+		mCurrentAnimation->EvaluatePose( skeleton );
 
-	for( int i=0; i<skeleton.GetBoneCount(); ++i )
-	{
-		skeleton.GetWorldTransform( i, poseBuffer );
+		for( int i=0; i<skeleton.GetBoneCount(); ++i )
+		{
+			skeleton.GetWorldTransform( i, poseBuffer );
+		}
 	}
-
 }
  
