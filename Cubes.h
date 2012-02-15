@@ -34,7 +34,8 @@ class AnimaApplication
 	AnimaApplication( WNDCLASSEX windowClass, HWND windowHandle ) : mWindowClass( windowClass ), mWindowHandle( windowHandle ){}
 	static AnimaApplication* mInstance;
 
-	float mModelRotation;
+	float mModelRotationAngle;
+	aiQuaternion mModelRotation;
 	bool mRotateModel;
 
 	class DeltaTime 

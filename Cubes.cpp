@@ -165,7 +165,7 @@ HRESULT AnimaApplication::CreateInstance( HINSTANCE hInstance, HINSTANCE hPrevIn
 	Instance()->mModel->SetNext( Instance()->mUserInterface );
 	Instance()->mModel->PlayAnimation( 0, 0.25f );
 
-	Instance()->mModelRotation = 0.f;
+	Instance()->mModelRotationAngle = 0.f;
 	Instance()->mRotateModel = true;
 
 	return S_OK;
@@ -216,13 +216,14 @@ void AnimaApplication::NextFrame()
 	
 	if( mRotateModel )
 	{
-		mModelRotation += 0.0001f; 
+		mModelRotationAngle += 0.0001f; 
+		
+		aiQuaternion rotateUpright( 0, 0,  Math::Pi / 2.f );
+		aiQuaternion rotateY( 0, mModelRotationAngle, 0 );
+
+		mModelRotation = rotateUpright*rotateY;
+		mModel->SetRoot( aiVector3D(0.f, 0.f, 0.f ), mModelRotation );
 	}
-
-	aiQuaternion rotateUpright( 0, 0,  Math::Pi / 2.f );
-	aiQuaternion rotateY( 0, mModelRotation, 0 );
-
-	mModel->SetRoot( aiVector3D(0.f, 0.f, 0.f ), rotateUpright*rotateY );
 }
 
 LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam )
@@ -255,6 +256,8 @@ LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 
 				case 0x4D: // 'M'
 					int animationMethod = mModel->ToggleAnimationMethod();
+					mModel->SetRoot( aiVector3D(0,0,0), mModelRotation );
+					mModel->Update( 0 );
 					mUserInterface->SetSkeletalAnimationMethod( animationMethod );
 					break;
 			}

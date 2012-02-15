@@ -218,18 +218,8 @@ void SkeletalModel::ToggleShaderTest()
 
 int SkeletalModel::ToggleAnimationMethod()
 {
-	mCurrentAnimationMethod = static_cast<SkeletalAnimationMethod>( (mCurrentAnimationMethod+1) % SAM_COUNT );
 
-	// update pose of selected skeleton
-	{
-		SkeletonInterface* skeleton = mSkeletons[mCurrentAnimationMethod];
-		PoseBufferInterface* poseBuffer = mPoseBuffers[mCurrentAnimationMethod];
-		mCurrentAnimation->EvaluatePose( *skeleton );
-		for( int i=0; i<skeleton->GetBoneCount(); ++i )
-		{
-			skeleton->GetWorldTransform( i, *poseBuffer );
-		}
-	}
+	mCurrentAnimationMethod = static_cast<SkeletalAnimationMethod>( (mCurrentAnimationMethod+1) % SAM_COUNT );
 	return mCurrentAnimationMethod;
 }
 
@@ -296,9 +286,10 @@ void SkeletalModel::Update( float dt )
 	SkeletonInterface& skeleton = *mSkeletons[mCurrentAnimationMethod];
 	PoseBufferInterface& poseBuffer = *mPoseBuffers[mCurrentAnimationMethod];
 
-	if( mCurrentAnimation && !mAnimationPaused )
+	if( mCurrentAnimation )
 	{
-		mCurrentAnimation->Update( dt );
+		// evaluate animation and pose even when animation is paused, in order to get consistent timing
+		mCurrentAnimation->Update( mAnimationPaused ? 0 : dt );
 		mCurrentAnimation->EvaluatePose( skeleton );
 
 		for( int i=0; i<skeleton.GetBoneCount(); ++i )
