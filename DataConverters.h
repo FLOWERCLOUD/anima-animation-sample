@@ -224,3 +224,77 @@ struct aiSkinningConverter : public DataConverter
 		memcpy( destination + mOffset + IndicesSize(), boneWeights, WeightsSize() );
 	}
 };
+
+struct TangentFrameToQTangentConverter : public DataConverter
+{
+	const aiVector3D* mNormals;
+	const aiVector3D* mTangents;
+	const aiVector3D* mBinormals;
+
+	int mTangentFrameCount;
+
+	TangentFrameToQTangentConverter(  D3DDECLUSAGE usageType, int usageIndex, int& offsetInBytes, const aiVector3D* normals, const aiVector3D* tangents, const aiVector3D* binormals, int tangentFrameCount ) 
+		: DataConverter( usageType, usageIndex, offsetInBytes )
+		, mNormals( normals )
+		, mTangents( tangents )
+		, mBinormals( binormals )
+		, mTangentFrameCount( tangentFrameCount )
+	{};
+
+	virtual int TangentFrameToQTangentConverter::Size() { return 5 * sizeof( float ); }
+
+	virtual void TangentFrameToQTangentConverter::CopyType( std::vector<D3DVERTEXELEMENT9>& out_Type )
+	{
+		D3DVERTEXELEMENT9 rotationElement =		{ 0, mOffset,					D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0 };
+		D3DVERTEXELEMENT9 reflectionComponent = { 0, mOffset + 4*sizeof(float), D3DDECLTYPE_FLOAT1, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TANGENT, 0 }; 
+
+		out_Type.push_back( rotationElement );
+		out_Type.push_back( reflectionComponent );
+	}
+
+	void TangentFrameToQTangentConverter::CopyData( BYTE* destination, int elementIndex  )
+	{
+		assert( elementIndex >= 0 && elementIndex < mTangentFrameCount );
+
+		
+		Math::Matrix3x4 tangentFrame(
+			mNormals[elementIndex].x,		mTangents[elementIndex].x,		mBinormals[elementIndex].x,		0,
+			mNormals[elementIndex].y,		mTangents[elementIndex].y,		mBinormals[elementIndex].y,		0,
+			mNormals[elementIndex].z,		mTangents[elementIndex].z,		mBinormals[elementIndex].z,		0
+		);
+
+		Math::Matrix3x4 tangentFrame_Original = tangentFrame;
+
+		// flip y axis in case the tangent frame encodes a reflection
+		float scale = tangentFrame.Determinant() > 0 ? 1.0f : -1.0f;
+
+		tangentFrame.data[0][0] *= scale;
+		tangentFrame.data[1][0] *= scale;
+		tangentFrame.data[2][0] *= scale;
+
+		Math::Quaternion tangentFrameQuaternion = tangentFrame;
+		
+	//	if( false )
+		{
+			Math::Matrix3x4 reconstructed = tangentFrameQuaternion;
+			
+			if( scale < 0 )
+			{
+				reconstructed.data[0][0] *= scale;
+				reconstructed.data[1][0] *= scale;
+				reconstructed.data[2][0] *= scale;
+			}
+		
+		//	tangentFrame_Original.Print();
+		//	reconstructed.Print();
+
+			for( int y=0; y<3; ++y )
+				for( int x=0; x<3; ++x )
+					if( abs(tangentFrame_Original.data[y][x] - reconstructed.data[y][x]) > 0.0001 )
+						DebugPrint( "ERROR\n" );
+		}
+		
+		memcpy( destination + mOffset, &tangentFrameQuaternion, sizeof(tangentFrameQuaternion) );
+		memcpy( destination + mOffset + sizeof(tangentFrameQuaternion), &scale,	sizeof(float) );
+	}
+};

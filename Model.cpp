@@ -213,7 +213,7 @@ bool SkeletalModel::ToggleAnimationPlayback()
 
 void SkeletalModel::ToggleShaderTest()
 {
-	mShaderTest = mShaderTest==0 ? 1 : 0;
+	mShaderTest = ++mShaderTest % 4;
 }
 
 int SkeletalModel::ToggleAnimationMethod()

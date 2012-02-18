@@ -47,6 +47,7 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Shaders\DualQuaternionSkinning.h" />
     <ClInclude Include="Shaders\LinearBlendSkinning.h" />
+    <ClInclude Include="Shaders\TangentFrame.h" />
     <ClInclude Include="Skeleton.h" />
     <ClInclude Include="SkeletonBuilder.h" />
     <ClInclude Include="stdafx.h" />

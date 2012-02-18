@@ -11,13 +11,13 @@ int ShaderTest : SHADER_TEST;
 
 #include "DualQuaternionSkinning.h"
 #include "LinearBlendSkinning.h"
+#include "TangentFrame.h"
 
 struct VertexShaderInput
 {
     float4 Position			: POSITION;
-    float3 Normal			: NORMAL;
-	float3 Tangent			: TANGENT;
-	float3 Binormal			: BINORMAL;
+	TangentFrame_QTangent TangentFrame;	
+	TangentFrame_Vectors TangentFrameReference;
 	float2 TexCoord			: TEXCOORD0; 
 	float4 BlendWeights		: BLENDWEIGHT0;
 	uint4 BlendIndices		: BLENDINDICES0;
@@ -61,10 +61,18 @@ VertexShaderOutput LinearBlendSkinning_VS( VertexShaderInput input )
 	// get blended matrix
 	float3x4 blendedTransform = GetBlendedMatrix( input.BlendIndices, input.BlendWeights );
 
-	// transform tangent space vectors into world space
-	result.Normal = mul( blendedTransform, float4( input.Normal, 0 ) );
-	result.Tangent = mul( blendedTransform, float4( input.Tangent, 0 ) );
-	result.Binormal = mul( blendedTransform, float4( input.Binormal, 0 ) );
+	// get tangent space vectors and transform into world space
+	{
+		float3x3 tangentFrameVectors = GetTangentFrameVectors( input.TangentFrame );
+	
+		float3 normal = tangentFrameVectors[0];
+		float3 tangent = tangentFrameVectors[1];
+		float3 binormal = tangentFrameVectors[2];
+
+		result.Normal = mul( blendedTransform, float4( normal, 0 ) );
+		result.Tangent = mul( blendedTransform, float4( tangent, 0 ) );
+		result.Binormal = mul( blendedTransform, float4( binormal, 0 ) );
+	}
 
 	// transform position into clip space
 	float3 blendedPosition = mul( blendedTransform, float4( input.Position.xyz, 1 ) );
@@ -76,10 +84,10 @@ VertexShaderOutput LinearBlendSkinning_VS( VertexShaderInput input )
 
 VertexShaderOutput DualQuaternionSkinning_VS( VertexShaderInput input )
 {
-	VertexShaderOutput result;
+	VertexShaderOutput result = (VertexShaderOutput)0;
 	result.TexCoord = input.TexCoord; 
 	result.Color = float4( 0.75, 0.75, 0.75, 1 );
-	
+
 	// blend bone DQs
 	float2x4 blendedDQ = GetBlendedDualQuaternion( input.BlendIndices, input.BlendWeights );
 
@@ -87,10 +95,18 @@ VertexShaderOutput DualQuaternionSkinning_VS( VertexShaderInput input )
 	float3 blendedPosition = transformPositionDQ( input.Position.xyz, blendedDQ[0], blendedDQ[1] );
 	result.Position =  mul( float4( blendedPosition.xyz, 1), ViewProjection );
 
-	// transform tangent space vectors into world space
-	result.Normal = transformNormalDQ( input.Normal, blendedDQ[0], blendedDQ[1] );
-	result.Tangent = transformNormalDQ( input.Tangent, blendedDQ[0], blendedDQ[1] );
-	result.Binormal = transformNormalDQ( input.Binormal, blendedDQ[0], blendedDQ[1] );
+	// get tangent space vectors and transform into world space
+	{
+		float3x3 tangentFrameVectors = GetTangentFrameVectors( input.TangentFrame );
+	
+		float3 normal = tangentFrameVectors[0];
+		float3 tangent = tangentFrameVectors[1];
+		float3 binormal = tangentFrameVectors[2];
+
+		result.Normal = transformNormalDQ( normal, blendedDQ[0], blendedDQ[1] );
+		result.Tangent = transformNormalDQ( tangent, blendedDQ[0], blendedDQ[1] );
+		result.Binormal = transformNormalDQ( binormal, blendedDQ[0], blendedDQ[1] );
+	}
 
 	return result;
 }
@@ -98,7 +114,6 @@ VertexShaderOutput DualQuaternionSkinning_VS( VertexShaderInput input )
  
 float4 Model_PS( VertexShaderOutput input ) : COLOR0
 {
-
 	float3 textureNormal = tex2D( NormalSampler, input.TexCoord ).xyz*2-1;
 
 	float3 normal = normalize(
@@ -106,12 +121,14 @@ float4 Model_PS( VertexShaderOutput input ) : COLOR0
 			textureNormal.x * input.Binormal +
 			textureNormal.z * input.Normal
 		);
-		
-	const float ambient = 0.5f;
-	float diffuse = saturate(dot(normal, LightDirection.xyz ) );
 
+	const float ambient = 0.75f;
+	float diffuseFactor = 0.25f;
+
+	float diffuse = dot(normal, LightDirection.xyz );
 	float4 textureColor = tex2D( DiffuseSampler, input.TexCoord );
-	return textureColor * (ambient + diffuse);
+
+	return textureColor * (ambient + diffuse * diffuseFactor);
 }
 
 technique LinearBlendSkinning
