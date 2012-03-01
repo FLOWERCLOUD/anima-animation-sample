@@ -162,7 +162,7 @@ struct aiSkinningConverter : public DataConverter
 		// build map first
 		for( unsigned int b=0; b<boneCount; ++b )
 		{
-			int boneIndex = skeletonBuilder.GetNodeIndex( bones[b]->mName.data ); // TODO: get bone index from animation; skeleton->getBoneIndex( bones[b]->mName.data );
+			int boneIndex = skeletonBuilder.GetNodeIndex( bones[b]->mName.data );
 			assert( boneIndex >= 0 );
 
 			for( unsigned int w=0; w<bones[b]->mNumWeights; ++w )
@@ -183,7 +183,6 @@ struct aiSkinningConverter : public DataConverter
 			std::sort( influences.begin(), influences.end(), BoneWeightCompare() );
 			VertexInfluence dummy = { 0, 0 };
 			influences.resize( MAX_INFLUENCES_PER_VERTEX, dummy );
-			//std::sort( influences.begin(), influences.end(), BoneIndexCompare() );
 
 			// renormalize weight
 			float totalWeight = std::accumulate( influences.begin(), influences.end(), 0.f,BoneWeightAccumulate() );
@@ -241,60 +240,43 @@ struct TangentFrameToQTangentConverter : public DataConverter
 		, mTangentFrameCount( tangentFrameCount )
 	{};
 
-	virtual int TangentFrameToQTangentConverter::Size() { return 5 * sizeof( float ); }
+	virtual int TangentFrameToQTangentConverter::Size() { return sizeof( Math::Quaternion ); }
 
 	virtual void TangentFrameToQTangentConverter::CopyType( std::vector<D3DVERTEXELEMENT9>& out_Type )
 	{
-		D3DVERTEXELEMENT9 rotationElement =		{ 0, mOffset,					D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0 };
-		D3DVERTEXELEMENT9 reflectionComponent = { 0, mOffset + 4*sizeof(float), D3DDECLTYPE_FLOAT1, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TANGENT, 0 }; 
-
-		out_Type.push_back( rotationElement );
-		out_Type.push_back( reflectionComponent );
+		D3DVERTEXELEMENT9 qtangentElement =	{ 0, mOffset, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, mUsageType, mUsageIndex };
+		out_Type.push_back( qtangentElement );
 	}
 
 	void TangentFrameToQTangentConverter::CopyData( BYTE* destination, int elementIndex  )
 	{
 		assert( elementIndex >= 0 && elementIndex < mTangentFrameCount );
-
 		
 		Math::Matrix3x4 tangentFrame(
-			mNormals[elementIndex].x,		mTangents[elementIndex].x,		mBinormals[elementIndex].x,		0,
-			mNormals[elementIndex].y,		mTangents[elementIndex].y,		mBinormals[elementIndex].y,		0,
-			mNormals[elementIndex].z,		mTangents[elementIndex].z,		mBinormals[elementIndex].z,		0
+			mBinormals[elementIndex].x,		mBinormals[elementIndex].y,		mBinormals[elementIndex].z,		0,
+			mTangents[elementIndex].x,		mTangents[elementIndex].y,		mTangents[elementIndex].z,		0,
+			mNormals[elementIndex].x,		mNormals[elementIndex].y,		mNormals[elementIndex].z,		0
 		);
-
+		
 		Math::Matrix3x4 tangentFrame_Original = tangentFrame;
 
 		// flip y axis in case the tangent frame encodes a reflection
 		float scale = tangentFrame.Determinant() > 0 ? 1.0f : -1.0f;
 
-		tangentFrame.data[0][0] *= scale;
-		tangentFrame.data[1][0] *= scale;
 		tangentFrame.data[2][0] *= scale;
+		tangentFrame.data[2][1] *= scale;
+		tangentFrame.data[2][2] *= scale;
 
-		Math::Quaternion tangentFrameQuaternion = tangentFrame;
-		
-	//	if( false )
-		{
-			Math::Matrix3x4 reconstructed = tangentFrameQuaternion;
-			
-			if( scale < 0 )
-			{
-				reconstructed.data[0][0] *= scale;
-				reconstructed.data[1][0] *= scale;
-				reconstructed.data[2][0] *= scale;
-			}
-		
-		//	tangentFrame_Original.Print();
-		//	reconstructed.Print();
+		Math::Quaternion tangentFrameQuaternion = tangentFrame;	
 
-			for( int y=0; y<3; ++y )
-				for( int x=0; x<3; ++x )
-					if( abs(tangentFrame_Original.data[y][x] - reconstructed.data[y][x]) > 0.0001 )
-						DebugPrint( "ERROR\n" );
-		}
-		
-		memcpy( destination + mOffset, &tangentFrameQuaternion, sizeof(tangentFrameQuaternion) );
-		memcpy( destination + mOffset + sizeof(tangentFrameQuaternion), &scale,	sizeof(float) );
+		// encode reflection into quaternion's w element by making sign of w negative if y axis needs to be flipped, positive otherwise
+		float qs = (scale<0 && tangentFrameQuaternion.data.w>0.f) || (scale>0 && tangentFrameQuaternion.data.w<0) ? -1.f : 1.f;
+
+		tangentFrameQuaternion.data.x *= qs;
+		tangentFrameQuaternion.data.y *= qs;
+		tangentFrameQuaternion.data.z *= qs;
+		tangentFrameQuaternion.data.w *= qs;
+
+		memcpy( destination + mOffset, &tangentFrameQuaternion.data, sizeof(tangentFrameQuaternion) );
 	}
 };

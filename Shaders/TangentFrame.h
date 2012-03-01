@@ -1,4 +1,6 @@
+#include "Quaternion.h"
 
+//#define DEBUG
 
 struct TangentFrame_Vectors
 {
@@ -10,22 +12,85 @@ struct TangentFrame_Vectors
 struct TangentFrame_QTangent
 {
 	float4 Rotation			: NORMAL;
-	float Reflection		: TANGENT;
 };
 
-float3x3 GetTangentFrameVectors( TangentFrame_QTangent tangentFrame )
+struct TangentFrame
 {
-	const float x = tangentFrame.Rotation.x, y = tangentFrame.Rotation.y, z = tangentFrame.Rotation.z, w = tangentFrame.Rotation.w;
-	const float r = tangentFrame.Reflection;
+	TangentFrame_Vectors vectors;
+	TangentFrame_QTangent qtangent;
+};
 
-	return float3x3(
-		(1 - 2*(y*y + z*z)) * r,		2*(x*y - w*z) * r,			2*(x*z + w*y) * r,
-		2*(x*y + w*z),					1 - 2*(x*x + z*z),			2*(y*z - w*x),
-		2*(x*z - w*y),					2*(y*z + w*x),				1 - 2*(x*x + y*y)
+float2x3 QuaternionToTangentBitangent( float4 q )
+{
+	return float2x3(
+		1 - 2*(q.y*q.y + q.z*q.z),			2*(q.x*q.y + q.w*q.z),			2*(q.x*q.z - q.w*q.y),
+		2*(q.x*q.y - q.w*q.z),				1 - 2*(q.x*q.x + q.z*q.z),		2*(q.y*q.z + q.w*q.x)
 	);
 }
 
-float3x3 GetTangentFrameVectors( TangentFrame_Vectors tangentFrame )
+#ifdef DEBUG
+
+float3x3 GetTangentFrame( float3x3 worldTransform, TangentFrame tangentFrame )
 {
-	return float3x3( tangentFrame.Normal, tangentFrame.Tangent, tangentFrame.Binormal );
+	float3x3 tf;
+	if( ShaderTest < 1 )
+	{
+		tf = QuaternionToMatrix( tangentFrame.qtangent.Rotation );
+		tf[2] *= (tangentFrame.qtangent.Rotation.w < 0 ? -1 : 1);
+	}
+	else
+	{
+		tf = float3x3( 
+			tangentFrame.vectors.Binormal,
+			tangentFrame.vectors.Tangent, 
+			tangentFrame.vectors.Normal 
+		);
+	}
+
+	return mul( tf, transpose(worldTransform) );
 }
+
+float3x3 GetTangentFrame( float4 worldTransform, TangentFrame tangentFrame )
+{
+	float3x3 tf;
+	if( ShaderTest < 1 )
+	{
+		float4 q = QuaternionMultiply( worldTransform,  tangentFrame.qtangent.Rotation );
+		tf = QuaternionToMatrix( q );
+		tf[2] *= (tangentFrame.qtangent.Rotation.w < 0 ? -1 : 1); 
+		return tf;
+	}
+	else
+	{
+	}
+
+	return tf;
+}
+
+#else // !defined(DEBUG)
+
+float3x3 GetTangentFrame( float3x3 worldTransform, TangentFrame tangentFrame )
+{
+	float2x3 tBt = QuaternionToTangentBitangent( tangentFrame.qtangent.Rotation );
+	float3 t = mul( worldTransform, tBt[0] );
+	float3 b = mul( worldTransform, tBt[1] );
+
+	return float3x3(
+		t,
+		b,
+		cross(t,b) * (tangentFrame.qtangent.Rotation.w < 0 ? -1 : 1)
+	);
+}
+
+float3x3 GetTangentFrame( float4 worldTransform, TangentFrame tangentFrame )
+{
+	float4 q = QuaternionMultiply( worldTransform,  tangentFrame.qtangent.Rotation );
+	float2x3 tBt = QuaternionToTangentBitangent( q );
+
+	return float3x3(
+		tBt[0],
+		tBt[1],
+		cross(tBt[0],tBt[1]) * (tangentFrame.qtangent.Rotation.w < 0 ? -1 : 1)
+	);
+}
+#endif

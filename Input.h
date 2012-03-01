@@ -4,12 +4,22 @@
 
 class Input
 {
+public:
+	struct KeyState
+	{
+		USHORT PreviousState;
+		USHORT CurrentState;
+
+		KeyState() : PreviousState(RI_KEY_BREAK), CurrentState(RI_KEY_BREAK){}
+	};
+
+	typedef std::map<USHORT, KeyState> KeyMap;
+
+private:
 	static const UINT MAX_KEYBOARD_EVENTS_PER_FRAME = 16;
 
-	typedef std::map<USHORT, USHORT> KeyInputType;
-
 	POINT mMouseDelta;
-	KeyInputType mKeys;
+	KeyMap mKeys;
 
 	struct
 	{
@@ -25,15 +35,19 @@ class Input
 	} mBufferedInput;
 
 	std::vector<BYTE> mInputBuffer;
+	bool mBlocked;
+
 public:
 	Input();
 	~Input();
 
 	void OnRawInput( HRAWINPUT hRawInput );
 	void Update( float dt );
+	void Unblock();
 
 	POINT GetMouse() const { return mMouseDelta; }
-	bool GetKey( USHORT VKey ) const;
+	bool IsKeyPressed( USHORT VKey ) const;
+	const KeyMap& GetKeys() const { return mKeys; }
 
 };
 

@@ -167,6 +167,7 @@ HRESULT AnimaApplication::CreateInstance( HINSTANCE hInstance, HINSTANCE hPrevIn
 
 	Instance()->mModelRotationAngle = 0.f;
 	Instance()->mRotateModel = true;
+	Instance()->mFrameCounter = 0;
 
 	return S_OK;
 }
@@ -200,7 +201,11 @@ void AnimaApplication::Run()
 
 void AnimaApplication::NextFrame()
 {
+	if( mFrameCounter==INPUT_DELAY )
+		mInput->Unblock();
+
 	mDeltaTime.Update();
+	ProcessInput();
 
 	mInput->Update( mDeltaTime.Elapsed() );
 
@@ -216,7 +221,7 @@ void AnimaApplication::NextFrame()
 	
 	if( mRotateModel )
 	{
-		mModelRotationAngle += 0.0001f; 
+		mModelRotationAngle += 0.00025f; 
 		
 		aiQuaternion rotateUpright( 0, 0,  Math::Pi / 2.f );
 		aiQuaternion rotateY( 0, mModelRotationAngle, 0 );
@@ -224,16 +229,18 @@ void AnimaApplication::NextFrame()
 		mModelRotation = rotateUpright*rotateY;
 		mModel->SetRoot( aiVector3D(0.f, 0.f, 0.f ), mModelRotation );
 	}
+
+	++mFrameCounter;
 }
 
-LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam )
+void AnimaApplication::ProcessInput()
 {
-	switch( msg )
-	{	
-
-        case WM_KEYDOWN:
+	const Input::KeyMap& keys = mInput->GetKeys();
+	for( Input::KeyMap::const_iterator it = keys.begin(); it != keys.end(); ++it )
+	{
+		if( (it->second.PreviousState & RI_KEY_BREAK) && (it->second.CurrentState & RI_KEY_BREAK) == 0 )
 		{
-			switch( wParam )
+			switch( it->first )
 			{
 				case VK_SPACE:
 					mRotateModel = mModel->ToggleAnimationPlayback();
@@ -262,8 +269,13 @@ LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 					break;
 			}
 		}
-        break;
+	}
+}
 
+LRESULT AnimaApplication::OnMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam )
+{
+	switch( msg )
+	{	
 		case WM_INPUT:
 		{
 			mInput->OnRawInput( (HRAWINPUT)lParam );
@@ -320,4 +332,9 @@ void AnimaApplication::TestDeviceLost()
 	d3dpp.AutoDepthStencilFormat = D3DFMT_D16;
 	d3dpp.PresentationInterval   = D3DPRESENT_INTERVAL_IMMEDIATE;
 	mRenderContext->Device()->Reset( &d3dpp );
+}
+
+void AnimaApplication::EnableInput()
+{
+	mInput->Unblock();
 }

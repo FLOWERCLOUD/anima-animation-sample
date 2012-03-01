@@ -18,6 +18,7 @@ class AnimaApplication
 {
 	static const int DISPLAY_WIDTH = 1280;
 	static const int DISPLAY_HEIGHT = 720; 
+	static const int INPUT_DELAY = 50;
 
 	RenderContext*  mRenderContext;
 	FramerateCounter* mFramerateCounter;
@@ -37,6 +38,7 @@ class AnimaApplication
 	float mModelRotationAngle;
 	aiQuaternion mModelRotation;
 	bool mRotateModel;
+	unsigned __int64 mFrameCounter;
 
 	class DeltaTime 
 	{
@@ -78,11 +80,13 @@ public:
 	void Run();
 
 	void NextFrame();	// update and render the next frame
+	void ProcessInput();
+	void EnableInput();
 
 	void SetTestEnvironment( TestEnvironment* testEnvironment ) { mTestEnvironment = testEnvironment; }
 	const TestEnvironment* GetTestEnvironment() { return mTestEnvironment; }
 
-	LRESULT OnMessage(HWND   hWnd, UINT   msg, WPARAM wParam,  LPARAM lParam );
+	LRESULT OnMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 	void OnDeviceLost();
 	void OnDeviceReset();
 

@@ -168,5 +168,11 @@ namespace Math
 
 	const float Pi = 3.14159265f;
 
+	template< class T >
+	const T& Clamp( const T& value, const T& minValue, const T& maxValue )
+	{
+		return value < minValue ? minValue : (value > maxValue ? maxValue : value);
+	}
+
 }
 #endif

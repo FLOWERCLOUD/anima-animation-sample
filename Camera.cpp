@@ -28,26 +28,16 @@ Camera::~Camera(void)
 
 void Camera::update( float dt )
 {
-	
-	int _up = GetKeyState( VK_UP ) & KEY_DOWN;
-	int _down = GetKeyState( VK_DOWN ) & KEY_DOWN;
-	int _left = GetKeyState( VK_LEFT ) & KEY_DOWN;
-	int _right = GetKeyState( VK_RIGHT ) & KEY_DOWN;
- 
-/*		
-	bool _up = mInput.GetKey( VK_UP );
-	bool _down =  mInput.GetKey(VK_DOWN );
-	bool _left =  mInput.GetKey( VK_LEFT );
-	bool _right =  mInput.GetKey( VK_RIGHT );
- */
+	bool _up = mInput.IsKeyPressed( VK_UP );
+	bool _down =  mInput.IsKeyPressed(VK_DOWN );
+	bool _left =  mInput.IsKeyPressed( VK_LEFT );
+	bool _right =  mInput.IsKeyPressed( VK_RIGHT );
 
 	float dAzimuth = -mInput.GetMouse().x * dt * ROTATION_SPEED;
 	float dZenith = mInput.GetMouse().y * dt * ROTATION_SPEED;;
 	
-
 	mAzimuth += dAzimuth;
-	mZenith += dZenith;
-
+	mZenith = Math::Clamp( mZenith+dZenith, 0.f, Math::Pi );
 	
 	const float cA = cos( mAzimuth );
 	const float sA = sin( mAzimuth );
