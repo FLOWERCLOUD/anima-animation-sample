@@ -1,0 +1,158 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="SkeletonBuilder.cpp">
+      <Filter>Importers</Filter>
+    </ClCompile>
+    <ClCompile Include="AnimationBuilder.cpp">
+      <Filter>Importers</Filter>
+    </ClCompile>
+    <ClCompile Include="Animation.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Model.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Cubes.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Debug.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="FramerateCounter.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Input.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="math.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderContext.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Skeleton.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="TestEnvironment.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="UI.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshBuilder.cpp">
+      <Filter>Importers</Filter>
+    </ClCompile>
+    <ClCompile Include="PoseBuffer.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="SkeletonBuilder.h">
+      <Filter>Importers</Filter>
+    </ClInclude>
+    <ClInclude Include="AnimationBuilder.h">
+      <Filter>Importers</Filter>
+    </ClInclude>
+    <ClInclude Include="Animation.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Cubes.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="DataConverters.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Debug.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="DisplayList.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="FramerateCounter.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Input.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="math.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Model.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Skeleton.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderContext.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="TestEnvironment.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="UI.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshBuilder.h">
+      <Filter>Importers</Filter>
+    </ClInclude>
+    <ClInclude Include="PoseBuffer.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders\DualQuaternionSkinning.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders\LinearBlendSkinning.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders\TangentFrame.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Importers</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders\Quaternion.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders\DualQuaternion.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="Serialization.h">
+      <Filter>Importers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Importers">
+      <UniqueIdentifier>{fd314abe-4bda-4a03-97a8-b07a7c3e808f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers">
+      <UniqueIdentifier>{dd0507c1-0fe8-4183-9f57-b8d7191b0f8d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sources">
+      <UniqueIdentifier>{e8908f32-0041-4d1a-b183-710193e2eeb7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{f127ad8f-f1b8-4bc1-bead-d1f7209b9507}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Model.fx">
+      <Filter>Shaders</Filter>
+    </None>
+  </ItemGroup>
+</Project>
