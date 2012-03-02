@@ -8,6 +8,13 @@ Vector::Vector()
 	: data(0,0,0)
 {}
 		
+Vector::Vector( const aiVector3D& other )
+{
+	data.x = other.x;
+	data.y = other.y;
+	data.z = other.z;
+}
+
 Vector::Vector( float x, float y, float z ) 
 	: data(x,y,z)
 {}
@@ -80,6 +87,11 @@ float Vector::Dot( const Vector& other ) const
 float Vector::Dot( float* a, float* b )
 {
 	return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+}
+
+Vector Vector::Interpolate( const Vector& a, const Vector& b, float t )
+{
+	return a.Scale( 1.f - t ) + b.Scale( t );
 }
 
 
@@ -214,15 +226,12 @@ Matrix3x4::Matrix3x4( const D3DXMATRIX& other )
 	data[2][0] = other(0,2);	data[2][1] = other(1,2);	data[2][2] = other(2,2);	data[2][3] = other(3,2);
 }
 
-Matrix3x4::Matrix3x4( const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
+Matrix3x4::Matrix3x4( const Vector& translation, const Quaternion& rotation, const Vector& scale )
 {
-	aiMatrix3x3 r = rotation.GetMatrix();
-	memcpy( &data[0], &r[0][0], sizeof(data[0]) );
-	memcpy( &data[1], &r[1][0], sizeof(data[1]) );
-	memcpy( &data[2], &r[2][0], sizeof(data[2]) );
-
-	data[0][0] *= scale.x;			data[1][1] *= scale.y;			data[2][2] *= scale.z;
-	data[0][3] = translation.x;		data[1][3] = translation.y;		data[2][3] = translation.z;
+	*this = rotation;
+	
+	data[0][0] *= scale.GetX();			data[1][1] *= scale.GetY();			data[2][2] *= scale.GetZ();
+	data[0][3] = translation.GetX();	data[1][3] = translation.GetY();	data[2][3] = translation.GetZ();
 }
 
 Matrix3x4 Matrix3x4::operator*( const Matrix3x4& right ) const
@@ -324,6 +333,10 @@ Quaternion::Quaternion( const D3DXQUATERNION& other )
 	: data( other )
 {}
 
+Quaternion::Quaternion( const aiQuaternion& other )
+	: data( other.x, other.y, other.z, other.w )
+{}
+
 Quaternion::Quaternion( const Quaternion& other )
 	: data( other.data )
 {}
@@ -385,13 +398,21 @@ Quaternion::operator Matrix3x4() const
 	Matrix3x4 result;
 	const float x = data.x, y = data.y, z = data.z, w = data.w;
 
-	result.data[0][0] = 1 - 2*(y*y + z*z);		result.data[0][1] = 2*(x*y + w*z);			result.data[0][2] = 2*(x*z - w*y);
-	result.data[1][0] = 2*(x*y - w*z);			result.data[1][1] = 1 - 2*(x*x + z*z);		result.data[1][2] = 2*(y*z + w*x);
-	result.data[2][0] = 2*(x*z + w*y);			result.data[2][1] = 2*(y*z - w*x);			result.data[2][2] = 1 - 2*(x*x + y*y);
+	result.data[0][0] = 1 - 2*(y*y + z*z);		result.data[0][1] = 2*(x*y - w*z);			result.data[0][2] = 2*(x*z + w*y);
+	result.data[1][0] = 2*(x*y + w*z);			result.data[1][1] = 1 - 2*(x*x + z*z);		result.data[1][2] = 2*(y*z - w*x);
+	result.data[2][0] = 2*(x*z - w*y);			result.data[2][1] = 2*(y*z + w*x);			result.data[2][2] = 1 - 2*(x*x + y*y);
 
 
 	return result;
 }
+
+Quaternion Quaternion::Interpolate( const Quaternion& a, const Quaternion& b, float t )
+{
+	Quaternion result;
+	D3DXQuaternionSlerp( &result.data, &a.data, &b.data, t );
+	return result;
+}
+
 
 /////////////////// Quaternion ///////////////////////////////////
 
@@ -406,15 +427,17 @@ DualQuaternion::DualQuaternion( const Quaternion& realPart, const Quaternion& du
 	, dual( dualPart )
 {}
 
-
-DualQuaternion::DualQuaternion( const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
+DualQuaternion::DualQuaternion( const Vector& translation, const Quaternion& rotation, const Vector& scale )
 {
-	real = Quaternion( rotation.x, rotation.y, rotation.z, rotation.w );
+	const float qx = rotation.data.x, qy = rotation.data.y, qz = rotation.data.z, qw = rotation.data.w;
+	const float tx = translation.GetX(), ty = translation.GetY(), tz = translation.GetZ();
+
+	real = Quaternion( qx, qy, qz, qw );
 	dual = Quaternion(
-		 0.5f*( translation.x*rotation.w + translation.y*rotation.z - translation.z*rotation.y),
-		 0.5f*(-translation.x*rotation.z + translation.y*rotation.w + translation.z*rotation.x),
-		 0.5f*( translation.x*rotation.y - translation.y*rotation.x + translation.z*rotation.w),
-		-0.5f*( translation.x*rotation.x + translation.y*rotation.y + translation.z*rotation.z)
+		 0.5f*( tx*qw + ty*qz - tz*qy),
+		 0.5f*(-tx*qz + ty*qw + tz*qx),
+		 0.5f*( tx*qy - ty*qx + tz*qw),
+		-0.5f*( tx*qx + ty*qy + tz*qz)
 	);
 }
 

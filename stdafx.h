@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <numeric>
 #include <iostream>
+#include <fstream>
 
 // assimp
 #include <assimp.hpp> 

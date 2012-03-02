@@ -45,6 +45,7 @@
     <ClInclude Include="PoseBuffer.h" />
     <ClInclude Include="RenderContext.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="Serialization.h" />
     <ClInclude Include="Shaders\DualQuaternion.h" />
     <ClInclude Include="Shaders\DualQuaternionSkinning.h" />
     <ClInclude Include="Shaders\LinearBlendSkinning.h" />

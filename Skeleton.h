@@ -3,18 +3,19 @@
 #include "stdafx.h" 
 #include "math.h"
 #include "PoseBuffer.h"
+#include "Serialization.h"
 
 struct aiScene;
 struct aiNode;
 struct aiBone;
 class SkeletonBuilder;
 
-class SkeletonInterface
+class SkeletonInterface : public Serialization::StreamSerializable
 {
 public:
 	virtual int GetBoneCount() const = 0;
 	virtual int GetMaxBoneCount() const = 0;
-	virtual void SetLocalTransform( int bone,  const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale ) = 0;
+	virtual void SetLocalTransform( int bone,  const Math::Vector& translation, const Math::Quaternion& rotation, const Math::Vector& scale ) = 0;
 	virtual void GetWorldTransform( int bone, PoseBufferInterface& poseBuffer ) const = 0;
 	virtual const char* GetShaderTechnique() const = 0;
 };
@@ -63,7 +64,7 @@ public:
 	}
 
 
-	virtual void SetLocalTransform( int bone,  const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale )
+	virtual void SetLocalTransform( int bone,  const Math::Vector& translation, const Math::Quaternion& rotation, const Math::Vector& scale )
 	{
 		mTransforms[bone] = BoneTransform( translation, rotation, scale );	
 	}
@@ -86,6 +87,22 @@ public:
 		}
 	
 		memcpy( poseBuffer[bone], &result, sizeof(BoneTransform) );
+	}
+
+	bool ToStream( std::ostream& stream )
+	{
+		Serialization::ToStream( mParents, stream );
+		Serialization::ToStream( mTransforms, stream );
+		Serialization::ToStream( mBindingTransforms, stream );
+		return stream.good();
+	}
+
+	bool FromStream( std::istream& stream )
+	{
+		Serialization::FromStream( stream, mParents );
+		Serialization::FromStream( stream, mTransforms );
+		Serialization::FromStream( stream, mBindingTransforms );
+		return true;
 	}
 };
 

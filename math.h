@@ -14,6 +14,7 @@ namespace Math
 	{
 		D3DXVECTOR3 data;
 		Vector();
+		Vector( const aiVector3D& other );
 		Vector( float x, float y, float z );
 
 		float GetX() const;
@@ -33,6 +34,8 @@ namespace Math
 		Vector Cross( const Vector& other ) const;
 		float Dot( const Vector& other ) const;
 		static float Dot( float* a, float* b );
+
+		static Vector Interpolate( const Vector& a, const Vector& b, float t );
 		
 	};
 
@@ -74,7 +77,7 @@ namespace Math
 		Matrix3x4( const aiMatrix4x4& other );
 		Matrix3x4( const aiMatrix3x3& other );
 		Matrix3x4( const D3DXMATRIX& other );
-		Matrix3x4( const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale );
+		Matrix3x4( const Vector& translation, const Quaternion& rotation, const Vector& scale );
 		Matrix3x4 operator*( const Matrix3x4& right ) const;
 
 		operator Quaternion() const;
@@ -92,6 +95,7 @@ namespace Math
 		Quaternion();
 		Quaternion( float x, float y, float z, float w );
 		Quaternion( const D3DXQUATERNION& other );
+		Quaternion( const aiQuaternion& other );
 		Quaternion( const Quaternion& other );
 
 		Quaternion operator*( const Quaternion& right ) const;
@@ -105,6 +109,7 @@ namespace Math
 		float Norm() const;
 
 		Quaternion Normalize() const;
+		static Quaternion Interpolate( const Quaternion& a, const Quaternion& b, float t );
 	};
 
 	struct DualQuaternion
@@ -114,7 +119,7 @@ namespace Math
 
 		DualQuaternion();
 		DualQuaternion( const Quaternion& realPart, const Quaternion& dualPart );
-		DualQuaternion( const aiVector3D& translation, const aiQuaternion& rotation, const aiVector3D& scale );
+		DualQuaternion( const Vector& translation, const Quaternion& rotation, const Vector& scale );
 
 		DualQuaternion operator*( const DualQuaternion& right ) const;
 		operator Matrix3x4() const;
@@ -157,6 +162,15 @@ namespace Math
 			float v = Next();
 			return (T) (v * (maxExclusive - minInclusive) + minInclusive);
 		
+		}
+	};
+
+	template< class T >
+	struct Interpolator
+	{
+		T operator()( const T& a, const T& b, float t )
+		{
+			return T::Interpolate( a, b, t );
 		}
 	};
 

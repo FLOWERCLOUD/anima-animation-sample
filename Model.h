@@ -10,7 +10,7 @@ class SkeletonBuilder;
 class MeshBuilder;
 struct aiScene;
 
-class SkeletalModel : public DisplayList::Node
+class SkeletalModel : public DisplayList::Node, Serialization::StreamSerializable
 {
 	friend class MeshBuilder;
 
@@ -23,7 +23,7 @@ class SkeletalModel : public DisplayList::Node
 	};
 
 
-	struct MeshData
+	struct MeshData : public Serialization::StreamSerializable
 	{
 		int mVertexCount;
 		int mVertexSize;
@@ -35,7 +35,13 @@ class SkeletalModel : public DisplayList::Node
 		std::vector<BYTE> mIndexData;
 		std::vector<D3DVERTEXELEMENT9> mVertexElements;
 
+		std::vector<BYTE> mAlbedoMap;
+		std::vector<BYTE> mNormalMap;
+
 		MeshData() : mVertexCount(0), mVertexSize(0), mTriangleCount(0), mIndexFormat(D3DFMT_UNKNOWN) {};
+
+		virtual bool ToStream( std::ostream& stream );
+		virtual bool FromStream( std::istream& stream );
 	};
 
 	struct Mesh
@@ -50,7 +56,7 @@ class SkeletalModel : public DisplayList::Node
 
 		MeshData Data;
 
-		Mesh() : mVertexBuffer(NULL), mVertexDeclaration(NULL), mIndexBuffer(NULL), mEffect(NULL) {}
+		Mesh() : mVertexBuffer(NULL), mVertexDeclaration(NULL), mIndexBuffer(NULL), mEffect(NULL), mDiffuseMap(NULL), mNormalMap(NULL) {}
 
 	};
 
@@ -58,9 +64,9 @@ class SkeletalModel : public DisplayList::Node
 	PoseBufferInterface* mPoseBuffers[SAM_COUNT];
 
 	std::vector<Mesh> mMeshes;
-	std::vector<Animation*> mAnimations;
+	std::vector<Animation> mAnimations;
 
-	Animation* mCurrentAnimation;
+	int mCurrentAnimation;
 	bool mAnimationPaused;
 
 	int mShaderTest;
@@ -76,8 +82,10 @@ public:
 	void AcquireResources( RenderContext* context );
 	void ReleaseResources( RenderContext* context );
 
+	virtual bool ToStream( std::ostream& stream );
+	virtual bool FromStream( std::istream& stream );
 
-	void SetRoot( const aiVector3D& translation, const aiQuaternion& rotation );
+	void SetRoot( const Math::Vector& translation, const Math::Quaternion& rotation );
 	void PlayAnimation( unsigned int animationIndex, float playbackSpeed = 0.f );
 	void PauseAnimation();
 	bool ToggleAnimationPlayback();

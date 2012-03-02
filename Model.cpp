@@ -10,6 +10,41 @@
 #include "PoseBuffer.h"
 
 using namespace std;
+
+bool SkeletalModel::MeshData::ToStream( std::ostream& stream )
+{
+	Serialization::ToStream( mVertexSize, stream );
+	Serialization::ToStream( mVertexCount, stream );
+	Serialization::ToStream( mTriangleCount, stream );
+	Serialization::ToStream( mIndexFormat, stream );
+
+	Serialization::ToStream( mVertexData, stream );
+	Serialization::ToStream( mIndexData, stream );
+	Serialization::ToStream( mVertexElements, stream );
+
+	Serialization::ToStream( mAlbedoMap, stream );
+	Serialization::ToStream( mNormalMap, stream );
+
+	return stream.good();
+}
+
+bool SkeletalModel::MeshData::FromStream( std::istream& stream )
+{
+	Serialization::FromStream( stream, mVertexSize );
+	Serialization::FromStream( stream, mVertexCount );
+	Serialization::FromStream( stream, mTriangleCount );
+	Serialization::FromStream( stream, mIndexFormat );
+
+	Serialization::FromStream( stream, mVertexData );
+	Serialization::FromStream( stream, mIndexData );
+	Serialization::FromStream( stream, mVertexElements );
+
+	Serialization::FromStream( stream, mAlbedoMap );
+	Serialization::FromStream( stream, mNormalMap );
+
+	return true;
+}
+
 SkeletalModel::SkeletalModel( const std::string& fileName )
 	: mFileName( fileName )
 	, mIsLoaded( false )
@@ -30,9 +65,9 @@ SkeletalModel::~SkeletalModel(void)
 	mMeshes.clear();
 }
 
-void SkeletalModel::SetRoot( const aiVector3D& translation, const aiQuaternion& rotation )
+void SkeletalModel::SetRoot( const Math::Vector& translation, const Math::Quaternion& rotation )
 {
-	mSkeletons[mCurrentAnimationMethod]->SetLocalTransform( 0, translation, rotation, aiVector3D(1.f,1.f,1.f) );
+	mSkeletons[mCurrentAnimationMethod]->SetLocalTransform( 0, translation, rotation, Math::Vector(1.f,1.f,1.f) );
 }
 
 void SkeletalModel::AcquireResources( RenderContext* context )
@@ -89,8 +124,8 @@ void SkeletalModel::AcquireResources( RenderContext* context )
 
 		// load textures
 		{
-			DX_CHECK( D3DXCreateTextureFromFile( context->Device(), "../Textures/frank_D.jpg", &mesh.mDiffuseMap ) );
-			DX_CHECK( D3DXCreateTextureFromFile( context->Device(), "../Textures/frank_N.jpg", &mesh.mNormalMap ) );
+			DX_CHECK( D3DXCreateTextureFromFileInMemory( context->Device(), &mesh.Data.mAlbedoMap[0], mesh.Data.mAlbedoMap.size(), &mesh.mDiffuseMap ) );
+			DX_CHECK( D3DXCreateTextureFromFileInMemory( context->Device(), &mesh.Data.mNormalMap[0], mesh.Data.mNormalMap.size(), &mesh.mNormalMap ) );
 		}
 	}
 }
@@ -147,40 +182,63 @@ void SkeletalModel::ReleaseResources( RenderContext* context )
 
 bool SkeletalModel::Load( RenderContext* context )
 {
-	// Create an instance of the Importer class
-	Assimp::Importer modelImporter;
+	std::string binFileName = mFileName + ".bin";
+	ifstream binFileReader( binFileName, std::ios::binary );
+	bool success = false;
 
-	// And have it read the given file with some example postprocessing
-	// Usually - if speed is not the most important aspect for you - you'll 
-	// propably to request more postprocessing than we do in this example.
-	const aiScene* scene = modelImporter.ReadFile( mFileName, 
-		aiProcess_CalcTangentSpace       | 
-		aiProcess_Triangulate            |
-		aiProcess_JoinIdenticalVertices  |
-		aiProcess_ConvertToLeftHanded	|	
-		aiProcess_SortByPType);
-
-	// If the import failed, report it
-	if( !scene)
+	if( binFileReader.good() )
 	{
-		std::cout << modelImporter.GetErrorString() << std::endl;
-		MessageBox( NULL,  modelImporter.GetErrorString(), "import failed", MB_OK );
-
-		return false;
+		success = FromStream( binFileReader );
+		binFileReader.close();
 	}
-
-	// import skeleton, animation and mesh data
+	
+	if( !success )
 	{
-		SkeletonBuilder skeletonBuilder( scene );
-		AnimationBuilder animationBuilder( scene, skeletonBuilder );
-		MeshBuilder meshBuilder( scene, skeletonBuilder );
+		// Create an instance of the Importer class
+		Assimp::Importer modelImporter;
 
-		// build all skeletons
-		skeletonBuilder.BuildSkeleton<Math::Matrix3x4>(	mSkeletons[SAM_LINEAR_BLEND_SKINNING], mPoseBuffers[SAM_LINEAR_BLEND_SKINNING] );
-		skeletonBuilder.BuildSkeleton<Math::DualQuaternion>( mSkeletons[SAM_DUAL_QUATERNION], mPoseBuffers[SAM_DUAL_QUATERNION] );
+		// And have it read the given file with some example postprocessing
+		// Usually - if speed is not the most important aspect for you - you'll 
+		// propably to request more postprocessing than we do in this example.
+		const aiScene* scene = modelImporter.ReadFile( mFileName, 
+			aiProcess_CalcTangentSpace       | 
+			aiProcess_Triangulate            |
+			aiProcess_JoinIdenticalVertices  |
+			aiProcess_ConvertToLeftHanded	|	
+			aiProcess_SortByPType);
 
-		animationBuilder.BuildAnimations( mAnimations );
-		meshBuilder.BuildMeshes( mMeshes );
+		// If the import failed, report it
+		if( !scene)
+		{
+			std::cout << modelImporter.GetErrorString() << std::endl;
+			MessageBox( NULL,  modelImporter.GetErrorString(), "import failed", MB_OK );
+
+			return false;
+		}
+
+		// import skeleton, animation and mesh data
+		{
+			SkeletonBuilder skeletonBuilder( scene );
+			AnimationBuilder animationBuilder( scene, skeletonBuilder );
+			MeshBuilder meshBuilder( scene, skeletonBuilder );
+
+			// build all skeletons
+			skeletonBuilder.BuildSkeleton<Math::Matrix3x4>(	mSkeletons[SAM_LINEAR_BLEND_SKINNING], mPoseBuffers[SAM_LINEAR_BLEND_SKINNING] );
+			skeletonBuilder.BuildSkeleton<Math::DualQuaternion>( mSkeletons[SAM_DUAL_QUATERNION], mPoseBuffers[SAM_DUAL_QUATERNION] );
+
+			animationBuilder.BuildAnimations( mAnimations );
+			meshBuilder.BuildMeshes( mMeshes );
+		}
+
+		// save data to bin file
+		{
+			std::ofstream binFileWriter( binFileName, std::ios::binary );
+			if( binFileWriter.good() )
+			{
+				ToStream( binFileWriter );
+			}
+			binFileWriter.close();
+		}
 	}
 	
 	// upload to gpu
@@ -194,8 +252,8 @@ void SkeletalModel::PlayAnimation( unsigned int animationIndex, float playbackSp
 {
 	if( animationIndex >= 0 && animationIndex < mAnimations.size() )
 	{
-		mCurrentAnimation = mAnimations[animationIndex];
-		mCurrentAnimation->Play( playbackSpeed );
+		mCurrentAnimation = animationIndex;
+		mAnimations[mCurrentAnimation].Play( playbackSpeed );
 		mAnimationPaused = false;
 	}
 }
@@ -286,11 +344,11 @@ void SkeletalModel::Update( float dt )
 	SkeletonInterface& skeleton = *mSkeletons[mCurrentAnimationMethod];
 	PoseBufferInterface& poseBuffer = *mPoseBuffers[mCurrentAnimationMethod];
 
-	if( mCurrentAnimation )
+	if( mCurrentAnimation >= 0 )
 	{
 		// evaluate animation and pose even when animation is paused, in order to get consistent timing
-		mCurrentAnimation->Update( mAnimationPaused ? 0 : dt );
-		mCurrentAnimation->EvaluatePose( skeleton );
+		mAnimations[mCurrentAnimation].Update( mAnimationPaused ? 0 : dt );
+		mAnimations[mCurrentAnimation].EvaluatePose( skeleton );
 
 		for( int i=0; i<skeleton.GetBoneCount(); ++i )
 		{
@@ -298,4 +356,77 @@ void SkeletalModel::Update( float dt )
 		}
 	}
 }
- 
+
+bool SkeletalModel::ToStream( std::ostream& stream )
+{
+	Serialization::ToStream( Serialization::STREAM_VERSION, stream );
+	Serialization::ToStream( Serialization::STREAM_MAGIC, stream );
+
+	for( int m=0; m < SAM_COUNT; ++m )
+	{
+		mSkeletons[m]->ToStream( stream );
+		mPoseBuffers[m]->ToStream( stream );
+	}
+
+	Serialization::ToStream( mMeshes.size(), stream );
+	for( unsigned int m=0; m<mMeshes.size(); ++m )
+		mMeshes[m].Data.ToStream( stream );
+
+	
+	Serialization::ToStream( mAnimations.size(), stream );
+	for( unsigned int a=0; a<mAnimations.size(); ++a )
+		mAnimations[a].ToStream( stream );
+
+
+	Serialization::ToStream( mCurrentAnimation, stream );
+	Serialization::ToStream( mAnimationPaused, stream );
+	Serialization::ToStream( mShaderTest, stream );
+	Serialization::ToStream( mCurrentAnimationMethod, stream );
+
+	Serialization::ToStream( Serialization::STREAM_MAGIC, stream );
+
+	return stream.good();
+}
+
+bool SkeletalModel::FromStream( std::istream& stream )
+{
+	int streamVersion = Serialization::FromStream<int>( stream );
+	int magic = Serialization::FromStream<int>( stream );
+
+	if( streamVersion != Serialization::STREAM_VERSION || magic != Serialization::STREAM_MAGIC ) 
+		return false;
+
+ 	for( int m=0; m < SAM_COUNT; ++m )
+	{
+		mSkeletons[m]->FromStream( stream );
+		mPoseBuffers[m]->FromStream( stream );
+	}
+
+	// meshes
+	{
+		int meshCount = Serialization::FromStream<int>( stream );
+
+		mMeshes.resize( meshCount );
+		for( unsigned int m=0; m<mMeshes.size(); ++m )
+			mMeshes[m].Data.FromStream( stream );
+	}
+
+	// animations
+	{
+		int animationCount = Serialization::FromStream<int>( stream );
+
+		mAnimations.resize( animationCount );
+		for( unsigned int a=0; a<mAnimations.size(); ++a )
+			mAnimations[a].FromStream( stream );
+	}
+	
+
+	// current animation
+	Serialization::FromStream( stream, mCurrentAnimation );
+	Serialization::FromStream( stream, mAnimationPaused );
+	Serialization::FromStream( stream,mShaderTest );
+	Serialization::FromStream( stream,mCurrentAnimationMethod );
+
+	int magicTail = Serialization::FromStream<int>( stream );
+	return magicTail == Serialization::STREAM_MAGIC;
+}
