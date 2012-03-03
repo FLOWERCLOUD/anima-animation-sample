@@ -196,8 +196,8 @@ void MeshBuilder::BuildMeshes( std::vector<SkeletalModel::Mesh>& meshes )
 
 		// read textures
 		{
-			ReadTexture( meshData.mAlbedoMap, "../Textures/frank_D.jpg" );
-			ReadTexture( meshData.mNormalMap, "../Textures/frank_N.jpg" );
+			ReadTexture( meshData.mAlbedoMap, "../Textures/frank_D.dds" );
+			ReadTexture( meshData.mNormalMap, "../Textures/frank_N.dds" );
 		}
 	}
 }

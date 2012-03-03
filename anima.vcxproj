@@ -48,6 +48,7 @@
     <ClInclude Include="Serialization.h" />
     <ClInclude Include="Shaders\DualQuaternion.h" />
     <ClInclude Include="Shaders\DualQuaternionSkinning.h" />
+    <ClInclude Include="Shaders\Gamma.h" />
     <ClInclude Include="Shaders\LinearBlendSkinning.h" />
     <ClInclude Include="Shaders\Quaternion.h" />
     <ClInclude Include="Shaders\TangentFrame.h" />

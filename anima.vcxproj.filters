@@ -135,6 +135,9 @@
     <ClInclude Include="Serialization.h">
       <Filter>Importers</Filter>
     </ClInclude>
+    <ClInclude Include="Shaders\Gamma.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Importers">

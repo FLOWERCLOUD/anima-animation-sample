@@ -101,6 +101,20 @@ void SkeletalModel::AcquireResources( RenderContext* context )
 
 		}
 
+		// load textures
+		{
+			DWORD albedoMapFilter = D3DX_FILTER_TRIANGLE | D3DX_FILTER_DITHER | D3DX_FILTER_SRGB_IN | D3DX_FILTER_SRGB_OUT;
+			DWORD normalMapFilter = D3DX_FILTER_LINEAR;
+
+			DX_CHECK( D3DXCreateTextureFromFileInMemoryEx( context->Device(), &mesh.Data.mAlbedoMap[0], mesh.Data.mAlbedoMap.size(), 
+				D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, D3DFMT_FROM_FILE, D3DPOOL_DEFAULT, albedoMapFilter,
+				D3DX_DEFAULT, 0, NULL, NULL, &mesh.mDiffuseMap ) );
+
+			DX_CHECK( D3DXCreateTextureFromFileInMemoryEx( context->Device(), &mesh.Data.mNormalMap[0], mesh.Data.mNormalMap.size(), 
+				D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, D3DFMT_FROM_FILE, D3DPOOL_DEFAULT, normalMapFilter,
+				D3DX_DEFAULT, 0, NULL, NULL, &mesh.mNormalMap ) );
+		}
+
 		// load shaders
 		{
 			unsigned int maxFloats = 0;
@@ -120,12 +134,29 @@ void SkeletalModel::AcquireResources( RenderContext* context )
 				DXTRACE_ERR( text, hr );
 				buf->Release();
 			}
-		}
+			else 
+			{
+				// set static shader parameters
+				D3DXHANDLE hDiffuseMap = mesh.mEffect->GetParameterBySemantic( NULL, "DIFFUSE_MAP" );
+				DX_CHECK( mesh.mEffect->SetTexture( hDiffuseMap, mesh.mDiffuseMap ) );
 
-		// load textures
-		{
-			DX_CHECK( D3DXCreateTextureFromFileInMemory( context->Device(), &mesh.Data.mAlbedoMap[0], mesh.Data.mAlbedoMap.size(), &mesh.mDiffuseMap ) );
-			DX_CHECK( D3DXCreateTextureFromFileInMemory( context->Device(), &mesh.Data.mNormalMap[0], mesh.Data.mNormalMap.size(), &mesh.mNormalMap ) );
+				D3DXHANDLE hNormalMap = mesh.mEffect->GetParameterBySemantic( NULL, "NORMAL_MAP" );
+				DX_CHECK( mesh.mEffect->SetTexture( hNormalMap, mesh.mNormalMap ) );
+
+				D3DXHANDLE hLightDirection = mesh.mEffect->GetParameterBySemantic( NULL, "LIGHTDIRECTION" );
+				D3DXVECTOR4 lightDirection = Math::Vector( 0.5, 1, 0 ).Normal();
+				DX_CHECK( mesh.mEffect->SetVector( hLightDirection, &lightDirection ) );
+
+				// store handles for dynamic shader parameters
+				mesh.EffectParameters.mViewProjection = mesh.mEffect->GetParameterBySemantic( NULL, "VIEWPROJECTION" );
+				mesh.EffectParameters.mBoneTransforms = mesh.mEffect->GetParameterBySemantic( NULL, "BONE_TRANSFORMS" );
+				mesh.EffectParameters.mShaderTest = mesh.mEffect->GetParameterBySemantic( NULL, "SHADER_TEST" );
+
+				for( int t=0; t<SAM_COUNT; ++t )
+				{
+					mesh.EffectParameters.mTechniques[t] = mesh.mEffect->GetTechniqueByName( mSkeletons[t]->GetShaderTechnique() );
+				}
+			}
 		}
 	}
 }
@@ -269,9 +300,10 @@ bool SkeletalModel::ToggleAnimationPlayback()
 	return !mAnimationPaused;
 }
 
-void SkeletalModel::ToggleShaderTest()
+int SkeletalModel::ToggleShaderTest()
 {
 	mShaderTest = ++mShaderTest % 2;
+	return mShaderTest;
 }
 
 int SkeletalModel::ToggleAnimationMethod()
@@ -286,57 +318,52 @@ void SkeletalModel::Render( RenderContext* context )
 	context->Device()->SetRenderState( D3DRS_ALPHABLENDENABLE, FALSE );
 	context->Device()->SetRenderState( D3DRS_ZWRITEENABLE, D3DZB_TRUE);
 	context->Device()->SetRenderState( D3DRS_ZENABLE, D3DZB_TRUE);
+	context->Device()->SetRenderState( D3DRS_SRGBWRITEENABLE, TRUE );
 
 	for( unsigned int m=0; m<mMeshes.size(); ++m )
 	{
 		const Mesh& mesh = mMeshes[m];
-		D3DXHANDLE hTechnique = mesh.mEffect->GetTechniqueByName( mSkeletons[mCurrentAnimationMethod]->GetShaderTechnique() );
-		D3DXHANDLE hViewProjection = mesh.mEffect->GetParameterBySemantic( NULL, "VIEWPROJECTION" );
-		
-		D3DXHANDLE hLightDirection = mesh.mEffect->GetParameterBySemantic( NULL, "LIGHTDIRECTION" );
-		D3DXHANDLE hBoneTransforms = mesh.mEffect->GetParameterBySemantic( NULL, "BONE_TRANSFORMS" );
-		D3DXHANDLE hShaderTest = mesh.mEffect->GetParameterBySemantic( NULL, "SHADER_TEST" );
-		D3DXHANDLE hDiffuseMap = mesh.mEffect->GetParameterBySemantic( NULL, "DIFFUSE_MAP" );
-		D3DXHANDLE hNormalMap = mesh.mEffect->GetParameterBySemantic( NULL, "NORMAL_MAP" );
-
-		
-		DX_CHECK( context->Device()->SetVertexDeclaration( mesh.mVertexDeclaration ) );
-		DX_CHECK( context->Device()->SetStreamSource( 0, mesh.mVertexBuffer, 0, mesh.Data.mVertexSize ) );
-		DX_CHECK( context->Device()->SetIndices( mesh.mIndexBuffer ) );
-
-		Math::Matrix viewProjection = context->GetViewMatrix() * context->GetProjectionMatrix();
-		DX_CHECK( mesh.mEffect->SetMatrix( hViewProjection, &viewProjection.data ) );
-
-		D3DXVECTOR4 lightDirection = Math::Vector( 0.5, 1, 0 ).Normal();
-		DX_CHECK( mesh.mEffect->SetVector( hLightDirection, &lightDirection ) );
-
+		if( mesh.mEffect )
 		{
-			PoseBufferInterface& poseBuffer = *mPoseBuffers[mCurrentAnimationMethod];
-			const float* poseData =  reinterpret_cast<const float*>( poseBuffer[0] );
-			DX_CHECK( mesh.mEffect->SetFloatArray( hBoneTransforms, poseData, poseBuffer.Size() / sizeof(float) ) );
+			// set dynamic shader parameters
+			{
+				Math::Matrix viewProjection = context->GetViewMatrix() * context->GetProjectionMatrix();
+				DX_CHECK( mesh.mEffect->SetMatrix( mesh.EffectParameters.mViewProjection, &viewProjection.data ) );
+		
+				PoseBufferInterface& poseBuffer = *mPoseBuffers[mCurrentAnimationMethod];
+				const float* poseData =  reinterpret_cast<const float*>( poseBuffer[0] );
+				DX_CHECK( mesh.mEffect->SetFloatArray( mesh.EffectParameters.mBoneTransforms, poseData, poseBuffer.Size() / sizeof(float) ) );
+			
+				DX_CHECK( mesh.mEffect->SetInt( mesh.EffectParameters.mShaderTest, mShaderTest ) );
+				DX_CHECK( mesh.mEffect->SetTechnique( mesh.EffectParameters.mTechniques[mCurrentAnimationMethod] ) );
+			}
+
+			// set geometry data
+			{
+				DX_CHECK( context->Device()->SetVertexDeclaration( mesh.mVertexDeclaration ) );
+				DX_CHECK( context->Device()->SetStreamSource( 0, mesh.mVertexBuffer, 0, mesh.Data.mVertexSize ) );
+				DX_CHECK( context->Device()->SetIndices( mesh.mIndexBuffer ) );
+			}
+
+			// now render
+			{
+				UINT cPasses;
+				DX_CHECK( mesh.mEffect->Begin( &cPasses, 0 ) );
+				for( unsigned int iPass = 0; iPass < cPasses; iPass++ )
+				{
+					DX_CHECK( mesh.mEffect->BeginPass( iPass ) );
+					DX_CHECK( context->Device()->DrawIndexedPrimitive( D3DPT_TRIANGLELIST, 0, 0, mesh.Data.mVertexCount, 0, mesh.Data.mTriangleCount ) );
+					DX_CHECK( mesh.mEffect->EndPass() );
+				}
+				DX_CHECK( mesh.mEffect->End() );
+			}
 		}
-
-		DX_CHECK( mesh.mEffect->SetInt( hShaderTest, mShaderTest ) );
-
-		DX_CHECK( mesh.mEffect->SetTexture( hDiffuseMap, mesh.mDiffuseMap ) );
-		DX_CHECK( mesh.mEffect->SetTexture( hNormalMap, mesh.mNormalMap ) );
-
-		DX_CHECK( mesh.mEffect->SetTechnique( hTechnique ) );
-	
-		UINT cPasses;
-		DX_CHECK( mesh.mEffect->Begin( &cPasses, 0 ) );
-		for( unsigned int iPass = 0; iPass < cPasses; iPass++ )
-		{
-			DX_CHECK( mesh.mEffect->BeginPass( iPass ) );
-			DX_CHECK( context->Device()->DrawIndexedPrimitive( D3DPT_TRIANGLELIST, 0, 0, mesh.Data.mVertexCount, 0, mesh.Data.mTriangleCount ) );
-			DX_CHECK( mesh.mEffect->EndPass() );
-		}
-
-		DX_CHECK( mesh.mEffect->End() );
 	}
-
+	
+	context->Device()->SetRenderState( D3DRS_SRGBWRITEENABLE, FALSE );
 	DX_CHECK( context->Device()->SetStreamSource( 0, NULL, 0, 0 ) );
 	DX_CHECK( context->Device()->SetIndices( NULL ) );
+
 }
 
 void SkeletalModel::Update( float dt )

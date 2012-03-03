@@ -258,15 +258,19 @@ void AnimaApplication::ProcessInput()
 					mUserInterface->ToggleStatistics();
 					break;
 				case 0x54: // 'T'
-					mModel->ToggleShaderTest();
+				{
+					int shaderTest = mModel->ToggleShaderTest();
+					mUserInterface->SetShaderTest( shaderTest );
 					break;
-
+				}
 				case 0x4D: // 'M'
+				{
 					int animationMethod = mModel->ToggleAnimationMethod();
 					mModel->SetRoot( aiVector3D(0,0,0), mModelRotation );
 					mModel->Update( 0 );
 					mUserInterface->SetSkeletalAnimationMethod( animationMethod );
 					break;
+				}
 			}
 		}
 	}

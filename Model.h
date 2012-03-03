@@ -54,6 +54,17 @@ class SkeletalModel : public DisplayList::Node, Serialization::StreamSerializabl
 		IDirect3DTexture9* mDiffuseMap;
 		IDirect3DTexture9* mNormalMap;
 
+		int mDiffuseMapSamplerIndex[SAM_COUNT];
+		int mNormalMapSamplerIndex[SAM_COUNT];
+
+		struct 
+		{
+			D3DXHANDLE mViewProjection;
+			D3DXHANDLE mShaderTest;
+			D3DXHANDLE mBoneTransforms;
+			D3DXHANDLE mTechniques[SAM_COUNT];
+		} EffectParameters;
+
 		MeshData Data;
 
 		Mesh() : mVertexBuffer(NULL), mVertexDeclaration(NULL), mIndexBuffer(NULL), mEffect(NULL), mDiffuseMap(NULL), mNormalMap(NULL) {}
@@ -90,7 +101,7 @@ public:
 	void PauseAnimation();
 	bool ToggleAnimationPlayback();
 	
-	void ToggleShaderTest();
+	int ToggleShaderTest();
 	int ToggleAnimationMethod();
 
 	void Render( RenderContext* context );

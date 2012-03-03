@@ -9,6 +9,7 @@ UserInterface::UserInterface( RenderContext* context, FramerateCounter* frameCou
 	: mFrameCounter( frameCounter )
 	, mRenderStatistics( true )
 	, mSkeletalAnimationMethod( 0 )
+	, mShaderTest( 0 )
 {
 	TextColor = D3DCOLOR_RGBA(255, 255, 255,255 );
 }
@@ -42,6 +43,13 @@ void UserInterface::Render( RenderContext* context )
 		const char* animationMethodNames[] = { "Linear Blend Skinning", "Dual Quaternion Skinning" };
 		sprintf_s( textBuffer, "Skinning Method: %s", animationMethodNames[mSkeletalAnimationMethod] );
 		RenderText( textBuffer, rcLine );
+
+		// shader test
+		RECT rcShaderTest  =  { Left,Top + LineHeight, Left + LineWidth, Top + 2* LineHeight };
+		sprintf_s( textBuffer, "Shader Test: %d", mShaderTest );
+		RenderText( textBuffer, rcShaderTest );
+
+
 	}
 }
 

@@ -11,6 +11,7 @@ class FramerateCounter;
 class UserInterface : public DisplayList::Node
 {
 	int mSkeletalAnimationMethod;
+	int mShaderTest;
 	FramerateCounter* mFrameCounter;
 	LPD3DXFONT mFont;
 
@@ -37,6 +38,7 @@ public:
 	void AcquireResources( RenderContext* context );
 	void ToggleStatistics() { mRenderStatistics = !mRenderStatistics; }
 	void SetSkeletalAnimationMethod( int methodIndex ) { mSkeletalAnimationMethod = methodIndex; }
+	void SetShaderTest( int shaderTest ) { mShaderTest = shaderTest; }
 
 };
 

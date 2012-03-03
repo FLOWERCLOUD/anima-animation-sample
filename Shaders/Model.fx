@@ -1,5 +1,7 @@
 #include "Quaternion.h"
 #include "DualQuaternion.h"
+#include "Gamma.h"
+#include "TangentFrame.h"
 
 #ifndef MAX_FLOAT_VECTORS_PER_MESH
 #define MAX_FLOAT_VECTORS_PER_MESH 66*3
@@ -14,7 +16,7 @@ int ShaderTest : SHADER_TEST;
 
 #include "DualQuaternionSkinning.h"
 #include "LinearBlendSkinning.h"
-#include "TangentFrame.h"
+
 
 struct VertexShaderInput
 {
@@ -40,6 +42,8 @@ sampler NormalSampler = sampler_state
     MinFilter = Linear;
     MagFilter = Linear;
     MipFilter = Linear;
+
+	sRGBTexture = false;
 };
 
 texture DiffuseMap : DIFFUSE_MAP;	
@@ -49,6 +53,8 @@ sampler DiffuseSampler = sampler_state
     MinFilter = Linear;
     MagFilter = Linear;
     MipFilter = Linear;
+
+	sRGBTexture = true;
 };
 
 VertexShaderOutput LinearBlendSkinning_VS( VertexShaderInput input )
