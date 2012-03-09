@@ -123,15 +123,33 @@ void SkeletalModel::AcquireResources( RenderContext* context )
 
 			char maxFloats4s[8];
 			sprintf_s( maxFloats4s, sizeof(maxFloats4s), "%d", maxFloats / 4 );
-			D3DXMACRO macros[] = { { "MAX_FLOAT_VECTORS_PER_MESH", maxFloats4s }, NULL };
+			D3DXMACRO macros[] =
+			{ 
+				{ "MAX_SKINNING_VECTORS", maxFloats4s },
+#ifdef DEBUG
+				{ "DEBUG", "1" },
+#endif
+				NULL 
+			};
 
-			LPD3DXBUFFER buf;			
-			HRESULT hr = D3DXCreateEffectFromFile( context->Device(), "../Shaders/Model.fx", macros, NULL, NULL, NULL, &mesh.mEffect, &buf );
+			LPD3DXBUFFER buf;	
+			const char* shaderName = "../Shaders/Model.fx";
+			HRESULT hr = D3DXCreateEffectFromFile( context->Device(), shaderName, macros, NULL, NULL, NULL, &mesh.mEffect, &buf );
 
 			if( FAILED(hr) && buf)
 			{
-				const char* text = reinterpret_cast<char*>( buf->GetBufferPointer() );
-				DXTRACE_ERR( text, hr );
+				const char* errorText = reinterpret_cast<char*>( buf->GetBufferPointer() );
+				char errorTitle[1024];
+				sprintf_s( errorTitle, "Error compiling shader '%s'", shaderName );
+				
+#ifdef DEBUG
+				// TODO: replace DXTRACE_ERR with vs console print so double clicking on file/line of error opens correct file
+				DXTRACE_ERR(errorText, hr );
+				__debugbreak();
+#else
+				MessageBox( NULL, errorText, errorTitle, MB_OK );
+				
+#endif
 				buf->Release();
 			}
 			else 
@@ -213,7 +231,14 @@ void SkeletalModel::ReleaseResources( RenderContext* context )
 
 bool SkeletalModel::Load( RenderContext* context )
 {
-	std::string binFileName = mFileName + ".bin";
+
+	std::string binFileName = mFileName + 
+#ifdef DEBUG
+		".debug.bin";
+#else
+		".bin";
+#endif
+
 	ifstream binFileReader( binFileName, std::ios::binary );
 	bool success = false;
 
@@ -222,7 +247,6 @@ bool SkeletalModel::Load( RenderContext* context )
 		success = FromStream( binFileReader );
 		binFileReader.close();
 	}
-	
 	if( !success )
 	{
 		// Create an instance of the Importer class
@@ -260,7 +284,6 @@ bool SkeletalModel::Load( RenderContext* context )
 			animationBuilder.BuildAnimations( mAnimations );
 			meshBuilder.BuildMeshes( mMeshes );
 		}
-
 		// save data to bin file
 		{
 			std::ofstream binFileWriter( binFileName, std::ios::binary );

@@ -1,4 +1,7 @@
+#ifndef __LINEAR_BLEND_SKINNING_H__
+#define __LINEAR_BLEND_SKINNING_H__
 
+#include "Skinning.h"
 
 float3x4 GetBoneMatrix( int boneIndex )
 {
@@ -9,7 +12,7 @@ float3x4 GetBoneMatrix( int boneIndex )
 	);
 }
 
-float3x4 GetBlendedMatrix(  uint4 boneIndices, float4 boneWeights )
+float3x4 GetBlendedMatrix( uint4 boneIndices, float4 boneWeights )
 {
 	return
 		GetBoneMatrix( boneIndices.x ) * boneWeights.x + 
@@ -17,3 +20,5 @@ float3x4 GetBlendedMatrix(  uint4 boneIndices, float4 boneWeights )
 		GetBoneMatrix( boneIndices.z ) * boneWeights.z + 
 		GetBoneMatrix( boneIndices.w ) * boneWeights.w;
 }
+
+#endif

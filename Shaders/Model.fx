@@ -1,22 +1,10 @@
-#include "Quaternion.h"
-#include "DualQuaternion.h"
+#include "Skinning.h"
 #include "Gamma.h"
-#include "TangentFrame.h"
-
-#ifndef MAX_FLOAT_VECTORS_PER_MESH
-#define MAX_FLOAT_VECTORS_PER_MESH 66*3
-#endif
-
-float4 BoneTransforms[MAX_FLOAT_VECTORS_PER_MESH] : BONE_TRANSFORMS;
+#include "Debug.h"
+#include "DualQuaternion.h"
 
 float4x4 ViewProjection	: VIEWPROJECTION;
 float4 LightDirection	: LIGHTDIRECTION;
-
-int ShaderTest : SHADER_TEST;
-
-#include "DualQuaternionSkinning.h"
-#include "LinearBlendSkinning.h"
-
 
 struct VertexShaderInput
 {

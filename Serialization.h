@@ -3,7 +3,12 @@
 
 namespace Serialization
 {
-	static const int STREAM_VERSION = 1;
+#ifdef DEBUG
+	static const int STREAM_VERSION = 101;
+#else
+	static const int STREAM_VERSION = 100;
+#endif
+
 	static const int STREAM_MAGIC = 0xDEADBEEF;
 
 	struct StreamSerializable

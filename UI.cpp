@@ -45,9 +45,11 @@ void UserInterface::Render( RenderContext* context )
 		RenderText( textBuffer, rcLine );
 
 		// shader test
+#ifdef DEBUG
 		RECT rcShaderTest  =  { Left,Top + LineHeight, Left + LineWidth, Top + 2* LineHeight };
 		sprintf_s( textBuffer, "Shader Test: %d", mShaderTest );
 		RenderText( textBuffer, rcShaderTest );
+#endif
 
 
 	}

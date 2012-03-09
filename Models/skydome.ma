@@ -1,6 +1,6 @@
 //Maya ASCII 2008 scene
 //Name: skydome.ma
-//Last modified: Mon, Mar 05, 2012 09:34:04 PM
+//Last modified: Mon, Mar 05, 2012 09:36:48 PM
 //Codeset: 1252
 requires maya "2008";
 requires "COLLADA" "3.05B";
@@ -12,12 +12,12 @@ fileInfo "cutIdentifier" "200708030019-704171";
 fileInfo "osv" "Microsoft Windows Vista Service Pack 1 (Build 7601)\n";
 createNode transform -s -n "persp";
 	setAttr ".v" no;
-	setAttr ".t" -type "double3" 2.2511499515244822 5.5230309419917649 0.090167591561838956 ;
-	setAttr ".r" -type "double3" -54.338352729881805 -888.9999999999709 0 ;
+	setAttr ".t" -type "double3" 22.137287156868851 23.803937204880565 -53.731576894539749 ;
+	setAttr ".r" -type "double3" -20.138352729880982 -918.99999999996908 0 ;
 createNode camera -s -n "perspShape" -p "persp";
 	setAttr -k off ".v" no;
 	setAttr ".fl" 34.999999999999993;
-	setAttr ".coi" 4.39132631287214;
+	setAttr ".coi" 63.460620017597989;
 	setAttr ".imn" -type "string" "persp";
 	setAttr ".den" -type "string" "persp_depth";
 	setAttr ".man" -type "string" "persp_mask";
@@ -102,6 +102,7 @@ createNode renderLayerManager -n "renderLayerManager";
 createNode renderLayer -n "defaultRenderLayer";
 	setAttr ".g" yes;
 createNode colladaDocument -n "colladaDocuments";
+	setAttr ".doc[0].fn" -type "string" "";
 createNode polySphere -n "polySphere1";
 	setAttr ".r" 14.270053775753571;
 createNode polyPlane -n "polyPlane1";

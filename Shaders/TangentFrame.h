@@ -1,6 +1,8 @@
-#include "Quaternion.h"
+#ifndef __TANGENT_FRAME_H__
+#define __TANGENT_FRAME_H__
 
-//#define DEBUG
+#include "Quaternion.h"
+#include "Debug.h"
 
 struct TangentFrame_Vectors
 {
@@ -52,19 +54,27 @@ float3x3 GetTangentFrame( float3x3 worldTransform, TangentFrame tangentFrame )
 
 float3x3 GetTangentFrame( float4 worldTransform, TangentFrame tangentFrame )
 {
-	float3x3 tf;
+	float3x3 result;
 	if( ShaderTest < 1 )
 	{
 		float4 q = QuaternionMultiply( worldTransform,  tangentFrame.qtangent.Rotation );
-		tf = QuaternionToMatrix( q );
-		tf[2] *= (tangentFrame.qtangent.Rotation.w < 0 ? -1 : 1); 
-		return tf;
+		result = QuaternionToMatrix( q );
+		result[2] *= (tangentFrame.qtangent.Rotation.w < 0 ? -1 : 1); 
 	}
 	else
 	{
+		// ideally we'd convert the qtangent to a rotation matrix here.
+		float3x3 wt = QuaternionToMatrix( worldTransform );
+		float3x3 tf = float3x3( 
+			tangentFrame.vectors.Binormal,
+			tangentFrame.vectors.Tangent, 
+			tangentFrame.vectors.Normal 
+		);
+
+		result = mul(tf, wt);
 	}
 
-	return tf;
+	return result;
 }
 
 #else // !defined(DEBUG)
@@ -93,4 +103,6 @@ float3x3 GetTangentFrame( float4 worldTransform, TangentFrame tangentFrame )
 		cross(tBt[0],tBt[1]) * (tangentFrame.qtangent.Rotation.w < 0 ? -1 : 1)
 	);
 }
-#endif
+#endif // DEBUG
+
+#endif // __TANGENT_FRAME_H__

@@ -47,7 +47,6 @@ void Animation::Play( float playbackSpeed )
 
 void Animation::Update( float dt )
 {
-	//mTime = 0.5f;
 	if( mPlaybackState != STOPPED )
 		mTime += (mPlaybackState == PLAYING_FORWARD ? dt : -dt) * mPlaybackSpeed;
 

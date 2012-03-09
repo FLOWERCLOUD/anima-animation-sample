@@ -59,8 +59,8 @@ void MeshBuilder::CreateDataConverters( ConverterMap& result ) const
 				converters.push_back( new TangentFrameToQTangentConverter( D3DDECLUSAGE_NORMAL, 0, offset, mesh->mNormals, mesh->mTangents, mesh->mBitangents, vertexCount ) );
 				offset += converters.back()->Size();
 
-				// add uncompressed tangent space for reference
-				if( false )
+				// add uncompressed tangent space for reference in debug mode
+#ifdef DEBUG
 				{
 					converters.push_back( new aiVector3DConverter( D3DDECLUSAGE_TEXCOORD, 5, offset, mesh->mNormals, vertexCount ) );
 					offset += converters.back()->Size();
@@ -71,6 +71,7 @@ void MeshBuilder::CreateDataConverters( ConverterMap& result ) const
 					converters.push_back( new aiVector3DConverter( D3DDECLUSAGE_TEXCOORD, 7, offset, mesh->mBitangents, vertexCount ) );
 					offset += converters.back()->Size();
 				}
+#endif
 			}
 			else
 			{

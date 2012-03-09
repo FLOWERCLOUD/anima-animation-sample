@@ -1,4 +1,5 @@
-
+#ifndef __DUAL_QUATERNION_SKINNNG_H__
+#define __DUAL_QUATERNION_SKINNNG_H__
 
 float2x4 GetBoneDualQuaternion( uint boneIndex )
 {
@@ -16,12 +17,11 @@ float2x4 GetBlendedDualQuaternion( uint4 boneIndices, float4 boneWeights )
 	float2x4 dq3 = GetBoneDualQuaternion( boneIndices.w );
 
 	
-	// Antipodality correction. Doesn't seem to be necessary for this model
-	/*
+	// Antipodality correction.
 	if (dot(dq0[0], dq1[0]) < 0.0) dq1 *= -1.0;
 	if (dot(dq0[0], dq2[0]) < 0.0) dq2 *= -1.0;	
 	if (dot(dq0[0], dq3[0]) < 0.0) dq3 *= -1.0;
-	*/
+	
 
 	float2x4 blendedDQ =
 		dq0 * boneWeights.x + 
@@ -32,4 +32,6 @@ float2x4 GetBlendedDualQuaternion( uint4 boneIndices, float4 boneWeights )
 	float normDQ = length(blendedDQ[0]);
 	return blendedDQ / normDQ;
 }
+
+#endif
 
