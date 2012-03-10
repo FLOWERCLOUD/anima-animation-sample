@@ -446,6 +446,11 @@ DualQuaternion DualQuaternion::operator*( const DualQuaternion& right ) const
 	return DualQuaternion( real * right.real, real * right.dual + dual * right.real );
 }
 
+DualQuaternion DualQuaternion::operator*( float c ) const
+{
+	return DualQuaternion( real*c, dual*c );
+}
+
 void DualQuaternion::Normalize() 
 {
 	float realNorm = real.Norm();

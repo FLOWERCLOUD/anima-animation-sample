@@ -106,6 +106,14 @@ public:
 	}
 };
 
+// specialized version of concatenate for dual quaternions with approximate antipodality correction
+template<>
+Math::DualQuaternion SkeletonGeneric<Math::DualQuaternion>::Concatenate( const Math::DualQuaternion& first, const Math::DualQuaternion& second ) const
+{
+	float s = first.real.Dot( second.real ) > 0 ? 1.0f : -1.0f;
+	return second * (first*s);
+}
+
 template< typename BoneTransform >
 struct SkeletonTraits
 {

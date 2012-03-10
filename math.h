@@ -122,6 +122,7 @@ namespace Math
 		DualQuaternion( const Vector& translation, const Quaternion& rotation, const Vector& scale );
 
 		DualQuaternion operator*( const DualQuaternion& right ) const;
+		DualQuaternion operator*( float c ) const;
 		operator Matrix3x4() const;
 
 		void Normalize();
