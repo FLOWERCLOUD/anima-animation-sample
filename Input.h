@@ -20,10 +20,12 @@ private:
 
 	POINT mMouseDelta;
 	KeyMap mKeys;
+	short mDeltaWheel;
 
 	struct
 	{
 		POINT Mouse;
+		short mDeltaWheel;
 
 		UINT KeyboardEventCount;
 		struct 
@@ -48,6 +50,6 @@ public:
 	POINT GetMouse() const { return mMouseDelta; }
 	bool IsKeyPressed( USHORT VKey ) const;
 	const KeyMap& GetKeys() const { return mKeys; }
-
+	short GetWheelDelta(void) const;
 };
 

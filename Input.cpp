@@ -30,6 +30,8 @@ void Input::Update( float dt )
 	for( unsigned int i=0; i<mBufferedInput.KeyboardEventCount; ++i )
 		mKeys[mBufferedInput.KeyboardEvents[i].Key].CurrentState = mBufferedInput.KeyboardEvents[i].Flags;
 
+	mDeltaWheel = mBufferedInput.mDeltaWheel;
+
 	// reset buffered input
 	memset( &mBufferedInput, 0x0, sizeof(mBufferedInput) ); 
 
@@ -56,6 +58,9 @@ void Input::OnRawInput( HRAWINPUT hRawInput )
 		{
 			mBufferedInput.Mouse.x += rawInput->data.mouse.lLastX ;
 			mBufferedInput.Mouse.y += rawInput->data.mouse.lLastY;
+
+			// get the delta value of the mouse wheel
+			mBufferedInput.mDeltaWheel = rawInput->data.mouse.usButtonData;
 		} 
 	}
 }
@@ -64,4 +69,9 @@ bool Input::IsKeyPressed( USHORT VKey ) const
 {
 	KeyMap::const_iterator it = mKeys.find( VKey );
 	return it != mKeys.end() && !(it->second.CurrentState & RI_KEY_BREAK);
+}
+
+short Input::GetWheelDelta(void) const
+{
+	return mDeltaWheel;
 }

@@ -32,6 +32,7 @@ void Camera::update( float dt )
 	bool _down =  mInput.IsKeyPressed(VK_DOWN );
 	bool _left =  mInput.IsKeyPressed( VK_LEFT );
 	bool _right =  mInput.IsKeyPressed( VK_RIGHT );
+	short _deltaWheel = mInput.GetWheelDelta();
 
 	float dAzimuth = -mInput.GetMouse().x * dt * ROTATION_SPEED;
 	float dZenith = mInput.GetMouse().y * dt * ROTATION_SPEED;;
@@ -60,7 +61,9 @@ void Camera::update( float dt )
 	Math::Vector left = forward.Cross( up );
 
 	Math::Vector s = left.Scale( _left ? 1.0f : ( _right ? -1.0f : 0.0f ) ).Scale( dt * MOVEMENT_SPEED );
-	Math::Vector f = forward.Scale( _up ? 1.0f : ( _down ? -1.0f : 0.0f ) ).Scale( dt * MOVEMENT_SPEED );	
+
+	float _scaleFactor = ( _deltaWheel ? _deltaWheel/2.f : _up ? 1.0f : _down ? -1.0f : 0.0f);
+	Math::Vector f = forward.Scale( _scaleFactor ).Scale( dt * MOVEMENT_SPEED );
 	mPosition += s+f;
 	
 	mView =  Math::Matrix::LookAt( mPosition, mPosition + forward, up );
