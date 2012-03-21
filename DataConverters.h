@@ -268,6 +268,20 @@ struct TangentFrameToQTangentConverter : public DataConverter
 		tangentFrame.data[2][2] *= scale;
 
 		Math::Quaternion tangentFrameQuaternion = tangentFrame;	
+		
+		// make sure we don't end up with 0 as w component
+		{
+			const float threshold = 0.000001f;
+			const float renomalization = sqrt( 1.0f - threshold * threshold );
+
+			if( abs(tangentFrameQuaternion.data.w) <= threshold )
+			{
+				tangentFrameQuaternion.data.w =  tangentFrameQuaternion.data.w > 0 ? threshold : -threshold;
+				tangentFrameQuaternion.data.x *= renomalization;
+				tangentFrameQuaternion.data.y *= renomalization;
+				tangentFrameQuaternion.data.z *= renomalization;
+			}
+		}
 
 		// encode reflection into quaternion's w element by making sign of w negative if y axis needs to be flipped, positive otherwise
 		float qs = (scale<0 && tangentFrameQuaternion.data.w>0.f) || (scale>0 && tangentFrameQuaternion.data.w<0) ? -1.f : 1.f;
